@@ -1,0 +1,11 @@
+{
+  "readableLineLength": true,
+  "trashOption": "local",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "00_Inbox",
+  "attachmentFolderPath": "00_Attachments",
+  "defaultViewMode": "source",
+  "livePreview": true,
+  "showInlineTitle": true,
+  "alwaysUpdateLinks": true
+}

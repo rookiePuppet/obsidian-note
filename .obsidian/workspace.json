@@ -1,0 +1,244 @@
+{
+  "main": {
+    "id": "cfd2c5433e3ee884",
+    "type": "split",
+    "children": [
+      {
+        "id": "940daf6f46105728",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a6b0cdb221eb9f95",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "00_Inbox/编曲.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "编曲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "cf692d081e9c7f1d",
+    "type": "split",
+    "children": [
+      {
+        "id": "d5ab349b967da646",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0bad9e69f3c12846",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "682b69a185d84436",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "82b353ec881f6517",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 305.5
+  },
+  "right": {
+    "id": "f2777f8a2b2fd799",
+    "type": "split",
+    "children": [
+      {
+        "id": "f9f8bacf8fddd88f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1ddcf25850f226cb",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "00_Inbox/编曲.md"
+              },
+              "icon": "lucide-list",
+              "title": "编曲 的大纲"
+            }
+          },
+          {
+            "id": "726ab86bb8a23443",
+            "type": "leaf",
+            "state": {
+              "type": "calendar",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "插件不再活动"
+            }
+          },
+          {
+            "id": "625cf9a8471fd577",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "39edb0623a9192a5",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "ba5b71a857c1edbf",
+            "type": "leaf",
+            "state": {
+              "type": "advanced-tables-toolbar",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "插件不再活动"
+            }
+          },
+          {
+            "id": "e373c9d1425618dd",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Computer Techs/Game Development/Shader.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Shader 的出链列表"
+            }
+          },
+          {
+            "id": "5f1b27c7b279db87",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Computer Techs/Game Development/Shader.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Shader 的反向链接列表"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 291.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "workspaces:管理工作区布局": false,
+      "table-editor-obsidian:Advanced Tables Toolbar": false
+    }
+  },
+  "active": "a6b0cdb221eb9f95",
+  "lastOpenFiles": [
+    "00_Attachments/Pasted image 20241106165922.png",
+    "00_Inbox/内存对齐.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
+    "Computer Techs/Game Development/Unity/书籍笔记/Unity Shader入门精要.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/编写可扩展的更简洁的代码.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/性能优化.md",
+    "00_Inbox/面试QA.md",
+    "Computer Techs/算法题.md",
+    "Computer Techs/Data Structures & Algorithms/2 数组、链表、栈和队列.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/Level up your code with Game Programming Pattern.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/Create modular game architecture in Unity with ScriptableObjects.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/xLua.md",
+    "Computer Techs/Programing Languages/Lua.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Lua语法.md",
+    "Computer Techs/Programing Languages/xLua.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Unity网络开发基础.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程",
+    "Computer Techs/Game Development/Unity/Unity插件.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/AssetBundle.md",
+    "Computer Techs/Game Development/Unity/书籍笔记",
+    "Computer Techs/Game Development/Unity/唐老狮教程/二进制序列化.md",
+    "Computer Techs/Game Development/Unity/书籍笔记/编辑器拓展.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/Serialization in Unity.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记/Unity脚本序列化.md",
+    "Computer Techs/Game Development/Unity/官方电子书笔记",
+    "Computer Techs/Game Development/Unity/文档笔记",
+    "Computer Techs/Game Development/Unity/文档笔记/Unity Shader.md",
+    "Computer Techs/计算机图形学编程.md",
+    "00_Inbox/计算机网络.md",
+    "Computer Techs/Game Development/Unity/01.Unity引擎工作原理.md",
+    "00_Attachments/Pasted image 20241104193916.png",
+    "00_Attachments/Pasted image 20241004065140.jpg",
+    "00_Attachments/Pasted image 20241004064446.jpg",
+    "00_Attachments/Pasted image 20241004064354.jpg",
+    "00_Attachments/Pasted image 20241004064251.jpg",
+    "00_Attachments/Pasted image 20241004064210.jpg",
+    "00_Attachments/Pasted image 20240930084432.jpg",
+    "00_Attachments/Pasted image 20240929230146.png",
+    "00_Attachments/Pasted image 20240929230136.png",
+    "00_Attachments/Pasted image 20240929225955.png",
+    "Game Design"
+  ]
+}
