@@ -765,5 +765,3 @@ local testFun2 = xlua.get_generic_method(CS.MyClass, "TestFun2")
 local testFun2_R = testFun2(CS.System.Int32)
 testFun2_R(obj, 1)
 ```
-
-[xLua背包实践](xLua背包实践/xLua背包实践.md "xLua背包实践")
