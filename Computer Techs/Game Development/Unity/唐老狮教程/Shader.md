@@ -5745,5 +5745,1081 @@ Shader "Unlit/FresnelReflectionDiffuse"
 ```
 ### 渲染纹理
 
+一般情况下，摄像机的画面会直接输出都颜色缓冲区中，然后渲染到屏幕上。
+
+而渲染纹理就是让摄像机将画面渲染到一张纹理上，我们可以对这张纹理做进一步处理，以实现特殊的效果，例如镜子、玻璃、屏幕后处理等。
+
+#### 常用方法
+
+1. 创建渲染纹理，将其关联到摄像机的Target Texture，这样摄像机就会把画面渲染到这个纹理上。
+2. 在Shader中使用Grab Pass，捕获当前屏幕，存储到纹理中。
+3. 在MonoBehaviour的OnRenderImage生命周期函数中，可以获取摄像机渲染完成的图像，一般用来实现自定义的屏幕后处理效果。
+
+#### 镜面效果
+
+原理是将摄像机的画面渲染到一张渲染纹理上，然后在Shader中将纹理翻转渲染。
+
+#### 玻璃效果
+
+透明虽然可以做出玻璃的效果，但是它无法做出反射和折射效果，并且会遇到深度排序问题。
+
+使用渲染纹理实现玻璃效果的方法是，在渲染前获取到当前的屏幕图像存储到渲染纹理中，再利用该纹理去做反射和折射效果。
+
+> GrabPass
+
+一个特殊的渲染通道，它可以捕获当前屏幕上已经渲染的内容，并存储到一张渲染纹理中
+
+```CS
+SubShader
+{
+	GrabPass {} // 默认的渲染纹理名称是 _GrabTexture
+	GrabPass {"_RefractionTex"} // 自定义名称
+}
+```
+
+> ComputeGrabScreenPos
+
+一个内置函数，传入顶点的裁剪空间位置，计算出顶点的屏幕空间位置，Z分量是深度值，W分量用于透视除法（将坐标映射到0~1）。
+
+```CS
+Shader "Unlit/Glass"  
+{  
+    Properties  
+    {  
+        _MainTex("Main Texture", 2D) = "white" {}  
+        _Cubemap("Cubemap", Cube) = "" {}  
+        _RefractionAmount("RefractionAmount", Range(0,1)) = 1  
+        _DistortionDegree("Distortion Degree", Range(0,1)) = 0.1  
+    }  
+    SubShader  
+    {  
+        Tags  
+        {  
+            "LightMode"="ForwardBase"  
+            "RenderType"="Opaque"  
+            "Queue"="Transparent"  
+        }  
+        GrabPass {}  
+        Pass  
+        {  
+            CGPROGRAM  
+            #pragma vertex vert  
+            #pragma fragment frag  
+            #pragma multi_compile_fwdbase  
+  
+            #include "UnityCG.cginc"  
+            #include "AutoLight.cginc"  
+            #include "Lighting.cginc"  
+  
+            struct v2f  
+            {  
+                float4 pos : SV_POSITION;  
+                float3 worldVertex: TEXCOORD0;  
+                half3 worldNormal: TEXCOORD1;  
+                half3 reflectionDir: TEXCOORD2;  
+                SHADOW_COORDS(3)  
+                float2 uv: TEXCOORD4;  
+                float4 screenPos: TEXCOORD5;  
+            };  
+            sampler2D _MainTex;  
+            float4 _MainTex_ST;  
+            samplerCUBE _Cubemap;  
+            sampler2D _GrabTexture;  
+            fixed _RefractionAmount;  
+            fixed _DistortionDegree;  
+  
+            v2f vert(appdata_base v)  
+            {                v2f o;  
+                o.pos = UnityObjectToClipPos(v.vertex);  
+                o.worldVertex = mul(unity_ObjectToWorld, v.vertex);  
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);  
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);  
+                half3 viewDir = normalize(UnityWorldSpaceViewDir(o.worldVertex));  
+                o.reflectionDir = reflect(-viewDir, o.worldNormal);  
+                TRANSFER_SHADOW(o);  
+                o.screenPos = ComputeScreenPos(o.pos);  
+                return o;  
+            }  
+            fixed4 frag(v2f i) : SV_Target  
+            {  
+                fixed4 texel = tex2D(_MainTex, i.uv);  
+                float2 offset = (1 - _RefractionAmount) * _DistortionDegree;  
+                float2 normalizedScreenPos = i.screenPos.xy / i.screenPos.w + offset;  
+                fixed3 grabColor = tex2D(_GrabTexture, normalizedScreenPos);  
+                fixed3 reflectionColor = texCUBE(_Cubemap, i.reflectionDir).rgb * texel.rgb;  
+                UNITY_LIGHT_ATTENUATION(atten, i, i.worldVertex);  
+                fixed3 color = reflectionColor * (1 - _RefractionAmount) + grabColor * _RefractionAmount;  
+                return fixed4(color * atten, 1);  
+            }            ENDCG  
+        }  
+    }    Fallback "Legacy Shaders/Reflective/Diffuse"  
+}
+```
+
+带法线纹理的玻璃效果：
+
+```CS
+Shader "Unlit/BumpedGlass"
+{
+    Properties
+    {
+        _MainTex("Main Texture", 2D) = "white" {}
+        _BumpTex("Bump Texture", 2D) = "white" {}
+        _Cubemap("Cubemap", Cube) = "" {}
+        _RefractionAmount("RefractionAmount", Range(0,1)) = 1
+        _DistortionDegree("Distortion Degree", Range(0,100)) = 0.1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+            "Queue"="Transparent"
+        }
+        GrabPass {}
+        Pass
+        {
+            Tags
+            {
+                "LightMode"="ForwardBase"
+            }
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_fwdbase
+
+            #include "UnityCG.cginc"
+            #include "AutoLight.cginc"
+            #include "Lighting.cginc"
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 worldVertex: TEXCOORD0;
+                float4 uv: TEXCOORD1;
+                float4 screenPos: TEXCOORD2;
+                half3 t2w0: TEXCOORD3;
+                half3 t2w1: TEXCOORD4;
+                half3 t2w2: TEXCOORD5;
+                SHADOW_COORDS(6)
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            sampler2D _BumpTex;
+            float4 _BumpTex_ST;
+            samplerCUBE _Cubemap;
+            sampler2D _GrabTexture;
+            fixed _RefractionAmount;
+            fixed _DistortionDegree;
+
+            v2f vert(appdata_full v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv.zw = TRANSFORM_TEX(v.texcoord, _BumpTex);
+                o.screenPos = ComputeScreenPos(o.pos);
+                o.worldVertex = mul(unity_ObjectToWorld, v.vertex);
+
+                half3 worldNormal = UnityObjectToWorldNormal(v.normal);
+                half3 worldTangent = UnityObjectToWorldDir(v.tangent.xyz);
+                half3 worldBitangent = cross(worldNormal, worldTangent) * v.tangent.w;
+                o.t2w0 = half3(worldTangent.x, worldBitangent.x, worldNormal.x);
+                o.t2w1 = half3(worldTangent.y, worldBitangent.y, worldNormal.y);
+                o.t2w2 = half3(worldTangent.z, worldBitangent.z, worldNormal.z);
+
+                TRANSFER_SHADOW(o);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                half3 tangentNormal = UnpackNormal(tex2D(_BumpTex, i.uv.zw));
+                half3 worldNormal = half3(dot(i.t2w0, tangentNormal), dot(i.t2w1, tangentNormal),
+                                          dot(i.t2w2, tangentNormal));
+                half3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldVertex));
+                half3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldVertex));
+                half3 halfDir = normalize(viewDir + lightDir);
+                half3 reflectionDir = reflect(-viewDir, worldNormal);
+                // 利用切线空间法线制造偏移，模拟扭曲效果
+                float2 offset = tangentNormal.xy * _DistortionDegree;
+                float2 normalizedScreenPos = (i.screenPos.xy + i.screenPos.z * offset) / i.screenPos.w;
+
+                fixed4 texel = tex2D(_MainTex, i.uv.xy);
+                fixed3 grabColor = tex2D(_GrabTexture, normalizedScreenPos);
+                fixed3 diffuseColor = _LightColor0.rgb * texel.rgb * saturate(dot(worldNormal, lightDir));
+                fixed3 specularColor = _LightColor0.rgb * pow(saturate(dot(worldNormal, halfDir)), 50);
+                fixed3 reflectionColor = texCUBE(_Cubemap, reflectionDir).rgb + diffuseColor + specularColor;
+                fixed3 color = reflectionColor * (1 - _RefractionAmount) + grabColor * _RefractionAmount;
+                return fixed4(color, 1);
+            }
+            ENDCG
+        }
+    }
+    Fallback "Legacy Shaders/Reflective/Diffuse"
+}
+```
+
 ### 程序纹理
 
+程序纹理就是使用程序代码生成的纹理图片，具有更高的可控性。
+
+可以使用C#代码生成纹理之后在Shader中使用，也可以直接在Shader中自定义纹理生成的逻辑。
+
+优点：
+
+1. 节省内存，可在运行时动态生成任意分辨率的纹理
+2. 可灵活根据需求调整参数，实时修改纹理外观
+3. 通过适当的函数设计，可以生成无缝衔平铺的纹理
+
+#### C\#代码生成
+
+```CS
+public class ProgramGeneratedTexture : MonoBehaviour
+{
+    public int textureWidth = 256;
+    public int textureHeight = 256;
+    public int cellCountInRow = 8;
+    public int cellCountInColumn = 8;
+    public Color oddColor = Color.white;
+    public Color evenColor = Color.black;
+
+    private Renderer _renderer;
+
+    public void UpdateTexture()
+    {
+        var texture = new Texture2D(textureWidth, textureHeight);
+        var cellWidth = textureWidth / cellCountInRow;
+        var cellHeight = textureHeight / cellCountInColumn;
+        for (var y = 0; y < textureHeight; y++)
+        {
+            for (var x = 0; x < textureWidth; x++)
+            {
+                texture.SetPixel(x, y, x / cellWidth % 2 == y / cellHeight % 2 ? evenColor : oddColor);
+            }
+        }
+
+        texture.Apply();
+
+        _renderer ??= GetComponent<Renderer>();
+        if (_renderer != null)
+        {
+            _renderer.material.mainTexture = texture;
+            Debug.Log("Texture updated");
+        }
+    }
+}
+```
+
+#### Shader代码生成
+
+```CS
+Shader "Unlit/ProgramGeneratedTexture"
+{
+    Properties
+    {
+        _RowColumnCount("Row Column Count", Vector) = (8,8,0,0)
+    }
+    SubShader
+    {
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+            
+            fixed2 _RowColumnCount;
+            
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.texcoord;
+                return o;
+            }
+            
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 uv = i.uv * _RowColumnCount;
+                float2 index = floor(uv);
+                fixed value = (index.x + index.y) % 2;
+                return fixed4(value, value, value, 1);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+#### 程序材质
+
+程序材质是通过算法和数学函数生成的材质，它包含了多种可自定义的纹理属性，让我们更方便地模拟实现各种物体表面。
+
+制作程序材质的工具有：Subtance Designer、Blender、Houdini等。
+
+使用Subtance Designer制作的程序材质，需要在Unity中安装Subtance 3D for Unity插件进行使用。
+
+获取程序材质的网站：Unity资源商店、Subtance社区、GameTextures
+
+### 动态效果
+
+在Shader中制作动态效果的关键就是，利用时间变化来改变Shader中的数据，从而引起渲染结果的改变。
+
+##### 内置的时间变量
+
+|                 | x    | y    | z        | w          | 说明                             |
+| --------------- | ---- | ---- | -------- | ---------- | ------------------------------ |
+| _Time           | t/20 | t    | 2t       | 3t         | t代表从游戏场景加载开始到目前的时间             |
+| _SinTime        | t/8  | t/4  | t/2      | t          | t代表游戏运行时间的正弦值                  |
+| _CosTime        | t/8  | t/4  | t/2      | t          | t代表游戏运行时间的余弦值                  |
+| unity_deltaTime | dt   | 1/dt | smoothDt | 1/smoothDt | dt代表帧间隔时间，smoothDt是平滑处理过的帧间隔时间 |
+
+利用时间来改变Shader中的变量，就可以实现各种动态效果。
+
+- 颜色：渐变、闪烁
+- 位置：波动
+- 纹理坐标：水流、云彩、序列帧动画
+- 法线：风吹草动
+- 缩放：脉动、跳动
+- 透明度：淡入淡出、闪烁
+
+#### 纹理动画
+##### 序列帧动画
+
+```CS
+Shader "Unlit/FrameAnimation"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _RowCount("Row Count", Float) = 8
+        _ColumnCount("Column Count", Float) = 8
+        _Speed("Speed", Float) = 1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+            "IgnoreProjector"="True"
+            "Queue"="Transparent"
+        }
+        Pass
+        {
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _RowCount;
+            float _ColumnCount;
+            float _Speed;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float frameIndex = floor(_Time.y * _Speed) % (_RowCount * _ColumnCount);
+                float rowIndex = frameIndex % _ColumnCount;
+                float columnIndex = floor(frameIndex / _ColumnCount);
+                float2 offset = float2(columnIndex / _ColumnCount, 1 - (rowIndex + 1) / _RowCount);
+                i.uv /= float2(_ColumnCount, _RowCount);
+                i.uv += offset;
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+##### 滚动背景
+
+```CS
+Shader "Unlit/ScrollBackground"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _XSpeed("X Speed", Float) = 1
+        _YSpeed("Y Speed", Float) = 0
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+            "Queue"="Transparent"
+            "IgnoreProjector"="True"
+        }
+        Pass
+        {
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _XSpeed;
+            float _YSpeed;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                i.uv = frac(i.uv + float2(_Time.y * _XSpeed, _Time.y * _YSpeed));
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+#### 顶点动画
+
+##### 2D河流
+
+```CS
+Shader "Unlit/River"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Color("Color", Color) = (1,1,1,1)
+        _Amplitude("Amplitude", Float) = 1
+        _Frequency("Frequency", Float) = 1
+        _InvWaveLength("_InvWaveLength", Float) = 1
+        _Speed("Speed", Float) = 1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Transparent"
+            "Queue"="Transparent"
+            "IgnoreProjector"="True"
+            "DisableBatching"="True"
+        }
+        Pass
+        {
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _Amplitude;
+            float _Frequency;
+            float _InvWaveLength;
+            float _Speed;
+            float4 _Color;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                float4 offset = float4(0, 0, 0, 0);
+                offset.x = sin(_Time.y * _Frequency + v.vertex.z * _InvWaveLength) * _Amplitude;
+                o.vertex = UnityObjectToClipPos(v.vertex + offset);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv.y += _Time.y * _Speed;
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                fixed4 col = tex2D(_MainTex, i.uv);
+                return col * _Color;
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+##### 广告牌效果
+
+广告牌效果用于使物体始终朝向摄像机，同时在某些轴上保持固定的方向。
+
+全向广告牌是物体在所有轴上都面向摄像机，适用于烟雾、火焰等在任何角度都要面向摄像机的效果。
+
+轴向广告牌是物体在一个轴上保持固定方向，其他轴上面向摄像机，适用于树木、花草等在某个轴上保持固定方向的效果。
+
+实现广告牌效果的核心原理是旋转模型空间坐标系，新坐标系下的三个轴使用如下方法计算：
+
+- Z轴：模型空间下的视角方向
+- X轴：Z轴叉乘原Y轴
+- Y轴：Z轴叉乘X轴
+
+```CS
+Shader "Unlit/BillBoard"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _VerticalAxisMultiplier("Vertical Axis Multiplier", Range(0,1)) = 1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Transparent"
+            "Queue"="Transparent"
+            "IgnoreProjector"="True"
+            "DisableBatching"="True"
+        }
+        Pass
+        {
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
+            Cull Off
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _VerticalAxisMultiplier;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                float3 faceDir = mul(unity_WorldToObject, float4(_WorldSpaceCameraPos, 1));
+                faceDir.y *= _VerticalAxisMultiplier;
+                faceDir = normalize(faceDir);
+                float3 rightDir = normalize(cross(faceDir.y > 0.999 ? float3(0, 0, 1) : float3(0, 1, 0), faceDir));
+                float3 upDir = normalize(cross(faceDir, rightDir));
+                
+                float4 vertex = float4(v.vertex.x * rightDir + v.vertex.y * upDir + v.vertex.z * faceDir, 1);
+                o.vertex = UnityObjectToClipPos(vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+#### 注意事项
+
+##### 批处理
+
+批处理会将具有相同网格的对象进行合并，以减少Draw Call。
+
+也就是说，被合并的对象将被使用统一的变换矩阵进行计算，而且这些对象的顶点是合并在一起的，那么就无法在Shader中分辨哪个顶点是哪个对象的，在进行顶点动画时就会发生渲染上的错误。
+
+通过添加$Disable Batching$标签来关闭批处理，可以避免批处理带来的问题。但是关闭批处理后会导致DrawCall增加，又有可能造成性能问题。
+
+因此，在关闭批处理的情况下，可以采用以下方式优化Shader。
+
+> 顶点颜色
+
+在C#代码中获取网格顶点数据，存储到网格的颜色属性中，之后在Shader中读取颜色作为顶点位置。
+
+```CS
+var meshFilter = GetComponent<MeshFilter>(); // 使用前判断是否为null
+var vertices = meshFilter.mesh.vertices;
+var colors = new Color[vertices.Length];
+// 将网格顶点存储到颜色属性中
+for(int i = 0; i < vertices.Length; i++)
+{
+	colors[i] = new Color(vertices[i].x, vertices[i].y, vertices[i].z, 1);
+}
+meshFilter.mesh.color = colors;
+
+
+/* 顶点着色器 */
+v2f vert(appdata_full i)
+{
+	// i.color 就是模型的顶点数据
+}
+```
+
+> UV 通道
+
+和顶点颜色类似，将顶点数据存放到UV2~7通道。
+
+##### 阴影
+
+因为顶点动画的着色器开启了透明度混合，Unity计算阴影的宏会忽略这种透明度混合的Shader，并且由于关闭了深度写入，即使Fallback指定了透明混合的Shader，也不能投射阴影。
+
+如果在Fallback指定一个带有Shadow Caster的Shader，阴影是按照模型原本的顶点位置来计算的，不会有动画效果。
+
+因此要为顶点动画添加正确的阴影，就需要自定义Shadow Caster Pass。
+
+```CS
+Pass
+{
+	Tags
+	{
+		"LightMode"="ShadowCaster"
+	}
+	CGPROGRAM
+	#pragma vertex vert
+	#pragma fragment frag
+	#pragma multi_compile_shadowcaster
+
+	#include "UnityCG.cginc"
+
+	struct v2f
+	{
+		V2F_SHADOW_CASTER;
+	};
+
+	float _Amplitude;
+	float _Frequency;
+	float _InvWaveLength;
+
+	v2f vert(appdata_base v)
+	{
+		v2f o;
+		float4 offset = float4(0, 0, 0, 0);
+		offset.x = sin(_Time.y * _Frequency + v.vertex.z * _InvWaveLength) * _Amplitude;
+		v.vertex += offset;
+		TRANSFER_SHADOW_CASTER_NORMALOFFSET(o);
+		return o;
+	}
+
+	fixed4 frag(v2f i) : SV_Target
+	{
+		SHADOW_CASTER_FRAGMENT(i);
+	}
+	ENDCG
+}
+```
+
+### 屏幕后处理
+
+屏幕后处理是一种在渲染管线的最后阶段应用的视觉效果，允许你在场景渲染完成后对最终图像进行各种调整和效果处理，以增强视觉体验。
+
+常见后期处理效果有：景深、模糊、色彩调整等。
+
+> 网格
+
+网格是一个3D对象的几何数据，由顶点、边、面组成，描述的是模型的形状和结构。
+
+网格包含的数据有：顶点、法线、切线、纹理坐标、顶点颜色等。
+
+> 网格渲染器
+
+网格渲染器用于将其关联的网格对象绘制出来，同时引用一个或多个材质以改变对象的外观。
+
+> 蒙皮网格渲染器
+
+用于处理带有骨骼动画的网格，除了处理网格数据，还处理骨骼和权重，允许网格根据骨骼动画来变形。
+
+> 材质
+
+材质用于定于模型网格的外观，通过修改其引用的着色器的相关属性来配置材质的表现。
+
+一个模型可以有多个材质，不同的部位可以使用不同的材质。
+
+> 着色器
+
+着色器是用于描述如何渲染图形和计算图形外观的程序，运行在GPU上，主要用于控制图形的颜色、纹理、光照等等视觉效果。
+
+#### 通过C# 修改材质参数
+
+```CS
+var renderer = GetComponent<Render>(); // Render是MeshRenderer和SkinnedMeshRenderer的基类
+
+/*
+不同对象在使用同一个材质时都会各自拷贝一个副本来使用
+material仅仅指向该对象本身使用的副本
+而sharedMeterial是所有材质副本的原始实例，修改会影响所有的副本
+*/
+renderer.material // 对象的实例化材质
+renderer.sharedMaterial // 对象的共享材质
+
+var material = renderer.sharedMaterial;
+
+/* 修改材质属性 */
+material.color = color; // 修改颜色
+material.mainTexture = texture; // 修改纹理
+// 另一种修改方式
+material.SetColor("_Color", color); // _Color是Shader中的属性名称
+
+/* 修改材质使用的Shader */
+material.shader = Shader.Find("Unlit/ShaderName");
+
+/* 获取材质属性 */
+var color = material.GetColor("_Color");
+
+/* 判断属性是否存在 */
+material.HasColor("_Color");
+
+/* 修改渲染队列 */
+material.renderQueue = 2000;
+```
+
+#### 基本原理
+
+实现屏幕后处理主要有两个步骤：
+
+1. 获取游戏场景渲染完成后的画面信息
+2. 为获取到的画面添加自定义效果
+
+获取渲染纹理的三种方式：RenderTexture、GrabPass、OnRenderImage。
+
+对于屏幕后处理会采用OnRenderImage函数来获取渲染完成后的游戏画面，OnRenderImage类似于MonoBehaviour的生命周期函数，在游戏场景渲染完成后会被调用。如果要在渲染完不透明物体后，在渲染透明物体前调用，可以加上 ImageEffectOpaque 特性，让后处理效果不影响透明物体。
+
+```CS
+/* 
+- source: 源渲染纹理，当前已经渲染好的画面纹理
+- destination: 目标渲染纹理，将经过处理后的图像写入到该纹理中
+*/
+void OnRenderImage(RenderTexture source, RenderTexture destination)
+{
+	// 将源纹理复制到目标纹理，并应用材质
+	Graphics.Blit(source, destination, material);
+}
+```
+
+#### 后处理基类
+
+```CS
+[ExecuteInEditMode]
+[RequireComponent(typeof(Camera))]
+public class ScreenPostProcessing : MonoBehaviour
+{
+    public Shader shader;
+    protected Material _material;
+    
+    protected Material Material
+    {
+        get
+        {
+            if (shader == null || !shader.isSupported)
+            {
+                return null;
+            }
+            if (_material != null && _material.shader == shader)
+            {
+                return _material;
+            }
+            _material = new Material(shader)
+            {
+                hideFlags = HideFlags.DontSave
+            };
+            return _material;
+        }
+    }
+    
+    protected void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (Material != null)
+        {
+            Graphics.Blit(source, destination, Material);
+        }
+        else
+        {
+            Graphics.Blit(source, destination);
+        }
+    }
+}
+```
+
+#### 亮度、饱和度、对比度
+
+##### 亮度
+
+改变亮度就是增大或减小像素的RGB值，值越大，亮度越高。
+
+##### 饱和度
+
+改变饱和度就是利用灰度颜色和原始颜色进行插值运算。
+
+$$
+Color_{Destination}=lerp(Color_{GrayScale}\space ,\space Color_{Source}\space ,\space Saturability)
+$$
+
+> 如何计算灰度值
+
+RGB三个通道的平均值可作为一个灰度值，但由于人眼对各个颜色的敏感度不同，所以一般不会采用这种算术平均值。
+
+在图形学中通常采用加权平均值，采用Rec.709标准，各个通道的权重分别为：
+
+- R：0.2126
+- G：0.7152
+- B：0.0722
+
+##### 对比度
+
+改变对比度就是利用中性灰色和原始颜色进行插值运算。
+
+$$
+Color_{Destination}=lerp(Color_{MiddleGray}\space ,\space Color_{Source}\space ,\space Contrast)
+$$
+
+##### 综合实现Shader
+
+```CS
+Shader "Unlit/ColorAdjustment"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Brightness("Brightness", Float) = 1
+        _Saturation("Saturation", Float) = 1
+        _Contrast("Contrast", Float) = 1
+    }
+    SubShader
+    {
+        Pass
+        {
+            ZTest Always
+            ZWrite Off
+            Cull Off
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+
+            float _Brightness;
+            float _Saturation;
+            float _Contrast;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                fixed4 texel = tex2D(_MainTex, i.uv);
+                fixed3 finalColor = texel.rgb;
+                fixed grayScale = texel.r * 0.2126 + texel.g * 0.7152 + texel.b * 0.0722;
+                // 改变饱和度
+                finalColor = lerp(fixed3(grayScale, grayScale, grayScale), finalColor, _Saturation);
+                // 改变对比度
+                finalColor = lerp(fixed3(0.5, 0.5, 0.5), finalColor, _Contrast);
+                // 改变亮度
+                finalColor *= _Brightness;
+                return fixed4(finalColor, texel.a);
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
+}
+```
+
+#### 边缘检测
+
+边缘检测主要通过检测图像中亮度显著变化的区域（边缘），然后对边缘进行描边或其他处理，是一种为了突出图像中的边缘，使物体轮廓更加明显的图像处理技术。
+
+##### 原理
+
+计算像素的灰度值，用灰度值结合卷积核进行卷积运算，得到该像素的梯度值。
+
+梯度值越大，则越靠近边界，应越趋近于描边颜色，反之应趋向于原始颜色。
+
+> 卷积核
+
+卷积核相当于一个放大镜，通过扫描图像来发现图像上的细微变化。
+
+假设卷积核是一个3x3矩阵，当对图像上某个像素进行卷积运算时，将卷积核覆盖在当前像素上，将卷积核的每一个元素与其覆盖的元素相乘，最后累加求和，就得到了当前像素的梯度值。
+
+![[Pasted image 20241116172301.png]]
+
+在图形学中有三种常用的卷积核（边缘检测因子）:
+
+- Roberts 算子
+- Prewitt 算子
+- Sobel 算子
+
+![[Pasted image 20241116173035.png]]
+
+两个卷积核分别用于计算水平和垂直方向的梯度值，然后计算出整体梯度值。
+
+$$
+G=\sqrt{G_x^2 + G_y^2}
+$$
+
+出于性能考虑，一般会采用绝对值相加的方式代替开根号运算。
+
+$$
+G=|G_x|+|G_y|
+$$
+
+> 获取当前像素周围八个像素
+
+Unity提供了纹理尺寸变量，需要在Shader中声明`float4 纹理名称_TexelSize`。
+
+xyzw分量分别代表1/W、1/H、W、H，W为宽度，H为高度。
+
+##### 实现
+
+```CS
+Shader "Unlit/EdgeDetection"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _EdgeColor("Edge Color", Color) = (1,1,1,1)
+        _RemainOriginalImage("Remain Original Image", Range(0,1)) = 1
+        _ReplaceColor("Replace Color", Color) = (1,1,1,1)
+    }
+    SubShader
+    {
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                half2 uv[9] : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float4 _MainTex_TexelSize;
+            fixed4 _EdgeColor;
+            float _RemainOriginalImage;
+            fixed4 _ReplaceColor;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                half2 uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv[0] = uv + _MainTex_TexelSize.xy * half2(-1, 1);
+                o.uv[1] = uv + _MainTex_TexelSize.xy * half2(0, 1);
+                o.uv[2] = uv + _MainTex_TexelSize.xy * half2(1, 1);
+                o.uv[3] = uv + _MainTex_TexelSize.xy * half2(-1, 0);
+                o.uv[4] = uv;
+                o.uv[5] = uv + _MainTex_TexelSize.xy * half2(1, 0);
+                o.uv[6] = uv + _MainTex_TexelSize.xy * half2(-1, -1);
+                o.uv[7] = uv + _MainTex_TexelSize.xy * half2(0, -1);
+                o.uv[8] = uv + _MainTex_TexelSize.xy * half2(1, -1);
+
+                return o;
+            }
+
+            float GetSobelGradient(v2f i)
+            {
+                const float GX[9] = {
+                    -1, -2, -1,
+                    0, 0, 0,
+                    1, 2, 1
+                };
+                const float GY[9] =
+                {
+                    -1, 0, 1,
+                    -2, 0, 2,
+                    -1, 0, 1
+                };
+                float gx = 0.0, gy = 0.0;
+                for (int index = 0; index < 9; index++)
+                {
+                    float4 texel = tex2D(_MainTex, i.uv[index]);
+                    float grayScale = texel.r * 0.2126 + texel.g * 0.7152 + texel.b * 0.0722;
+                    gx += GX[index] * grayScale;
+                    gy += GY[index] * grayScale;
+                }
+
+                return abs(gx) + abs(gy);
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float gradients = GetSobelGradient(i);
+                fixed3 originalColorWithEdge = lerp(tex2D(_MainTex, i.uv[4]), _EdgeColor, gradients);
+                fixed3 replaceColorWithEdge = lerp(_ReplaceColor, _EdgeColor, gradients);
+
+                return float4(lerp(replaceColorWithEdge, originalColorWithEdge, _RemainOriginalImage), 1);
+            }
+            ENDCG
+        }
+    }
+}
+```
