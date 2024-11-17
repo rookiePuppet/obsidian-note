@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "8c84dfa1de171c50",
+        "id": "c717976727e2a8aa",
         "type": "tabs",
         "children": [
           {
-            "id": "bd6cf39608045640",
+            "id": "8464756c4e4032b0",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -197,8 +197,11 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "bd6cf39608045640",
+  "active": "8464756c4e4032b0",
   "lastOpenFiles": [
+    "00_Attachments/Pasted image 20241117115224.png",
+    "00_Attachments/Pasted image 20241117113052.png",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
     "00_Attachments/Pasted image 20241116173035.png",
     "00_Attachments/Pasted image 20241116172301.png",
     "00_Inbox/计算机网络.md",
@@ -211,7 +214,6 @@
     "00_Inbox/丧尸围城Demo.md",
     "00_Inbox/面试QA.md",
     "00_Inbox/游戏素材.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
     "Art/编曲.md",
     "Computer Techs/Game Development/Unity/唐老狮教程/xLua.md",
     "Computer Techs/Game Development/Unity/文档笔记/Unity Shader.md",
@@ -239,8 +241,6 @@
     "00_Attachments/Pasted image 20241004065140.jpg",
     "00_Attachments/Pasted image 20241004064446.jpg",
     "00_Attachments/Pasted image 20241004064354.jpg",
-    "00_Attachments/Pasted image 20241004064251.jpg",
-    "00_Attachments/Pasted image 20241004064210.jpg",
     "Game Design"
   ]
 }

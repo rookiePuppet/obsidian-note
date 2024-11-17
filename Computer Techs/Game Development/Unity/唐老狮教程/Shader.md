@@ -6823,3 +6823,186 @@ Shader "Unlit/EdgeDetection"
     }
 }
 ```
+
+#### 高斯模糊
+
+高斯模糊是一种用于平滑图像并减少图像噪声和细节的图像处理技术。
+
+##### 原理
+
+利用高斯函数计算出高斯滤波核中的每个元素并进行归一化处理后，再和目标像素通过卷积运算得到最终颜色。
+
+高斯滤波核就是一个NxN的卷积核，大小可以自定义，N一般为奇数，越大越模糊。
+
+从效果和效率综合考虑，一般采用5x5大小，核中每个元素由高斯函数确定。
+
+> 二维高斯函数
+
+$$
+G(x,y)=\frac{1}{2\pi\sigma^2}e^{-\frac{x^2+y^2}{2\sigma^2}}
+$$
+
+- $\sigma$是标准方差，一般取值为1
+- x、y是相对于高斯核中心的整数距离
+
+使用高斯函数计算并经过归一化处理后的高斯滤波核：
+
+![[Pasted image 20241117113052.png]]
+
+> 将二维高斯函数分解为两个一维函数相乘
+
+如果直接使用二维高斯函数计算，对于一张$W*H$尺寸的图像，总共需要进行$N*N*W*H$次纹理采样计算，效率非常低。
+
+利用二维高斯函数的可分离性，将其表示为两个一维函数的乘积，计算量下降到$2*N*W*H$。
+
+$$
+G(x,y)=\frac{1}{2\pi\sigma^2}e^{-\frac{x^2+y^2}{2\sigma^2}}=
+G(x)*G(y)=\frac{1}{\sqrt{2\pi}\sigma}e^{\frac{x^2}{-2\sigma^2}}*\frac{1}{\sqrt{2\pi}\sigma}e^{\frac{y^2}{-2\sigma^2}}
+$$
+
+由于每一行的y相同，每一列的x相同，对于水平和垂直方向只需要分别计算一次即可。
+
+![[Pasted image 20241117115224.png]]
+
+现在，只需要让每个像素分别与水平和垂直卷积计算，再将水平和垂直的卷积结果相乘即可。
+
+> 控制模糊程度
+
+通常不会直接扩大高斯滤波核的大小，始终采用$5*5$的核。
+
+三种控制模糊程度的方式：
+
+- 控制纹理缩放大小：纹理尺寸越小，越模糊，计算量也随之减少
+- 控制纹理采样间隔：采样间隔越大，越模糊
+- 控制模糊次数：多次执行模糊处理，增加模糊程度
+
+##### 实现
+
+```CS
+Shader "Unlit/GaussianBlur"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _BlurSize("Blur Size", Float) = 1
+    }
+    SubShader
+    {
+        ZTest Always
+        ZWrite Off
+        Cull Off
+
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        struct v2f
+        {
+            float2 uv[5] : TEXCOORD0;
+            float4 vertex : SV_POSITION;
+        };
+
+        sampler2D _MainTex;
+        float4 _MainTex_ST;
+        float4 _MainTex_TexelSize;
+        float _BlurSize;
+
+        fixed4 frag(v2f input) : SV_Target
+        {
+            const float G[3] = {0.4026, 0.2442, 0.0545};
+            fixed3 color = tex2D(_MainTex, input.uv[0]).rgb * G[0];
+            color += tex2D(_MainTex, input.uv[1]).rgb * G[1];
+            color += tex2D(_MainTex, input.uv[2]).rgb * G[1];
+            color += tex2D(_MainTex, input.uv[3]).rgb * G[2];
+            color += tex2D(_MainTex, input.uv[4]).rgb * G[2];
+            return fixed4(color, 1);
+        }
+        ENDCG
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                half2 uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv[0] = uv;
+                o.uv[1] = uv + float2(_MainTex_TexelSize.x * 1, 0) * _BlurSize;
+                o.uv[2] = uv + float2(_MainTex_TexelSize.x * -1, 0) * _BlurSize;
+                o.uv[3] = uv + float2(_MainTex_TexelSize.x * 2, 0) * _BlurSize;
+                o.uv[4] = uv + float2(_MainTex_TexelSize.x * -2, 0) * _BlurSize;
+                return o;
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                half2 uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv[0] = uv;
+                o.uv[1] = uv + float2(0, _MainTex_TexelSize.y * 1) * _BlurSize;
+                o.uv[2] = uv + float2(0, _MainTex_TexelSize.y * -1) * _BlurSize;
+                o.uv[3] = uv + float2(0, _MainTex_TexelSize.y * 2) * _BlurSize;
+                o.uv[4] = uv + float2(0, _MainTex_TexelSize.y * -2) * _BlurSize;
+                return o;
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+```CS
+public class ScreenPostProcessing_GaussianBlur : ScreenPostProcessing
+{
+    [Range(1, 32)] public float blurSize = 1;
+    [Range(1, 32)] public int sizeReductionMultiplier = 1;
+    [Range(1, 16)] public int blurIterations = 1;
+
+    private static readonly int MaterialPropertyBlurSize = Shader.PropertyToID("_BlurSize");
+
+    protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (Material == null)
+        {
+            Graphics.Blit(source, destination);
+            return;
+        }
+
+        var textureSize = new Vector2Int(source.width / sizeReductionMultiplier, source.height / sizeReductionMultiplier);
+        var buffers = new RenderTexture[2];
+        for (var i = 0; i < 2; i++)
+        {
+            buffers[i] = RenderTexture.GetTemporary(textureSize.x, textureSize.y);
+            buffers[i].filterMode = FilterMode.Bilinear;
+        }
+        
+        Graphics.Blit(source, buffers[0]);
+        // 利用两个缓冲区迭代处理
+        for (var i = 0; i < blurIterations; i++)
+        {
+            // 随着迭代次数增加，扩大采样间隔
+            Material.SetFloat(MaterialPropertyBlurSize, blurSize * i);
+            
+            Graphics.Blit(buffers[0], buffers[1], Material, 0);
+            Graphics.Blit(buffers[1], buffers[0], Material, 1);
+        }
+        // 从第一个buffer获取最终图像
+        Graphics.Blit(buffers[0], destination);
+
+        RenderTexture.ReleaseTemporary(buffers[0]);
+        RenderTexture.ReleaseTemporary(buffers[1]);
+    }
+}
+```
