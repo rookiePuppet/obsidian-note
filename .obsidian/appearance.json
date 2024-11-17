@@ -5,7 +5,7 @@
   "interfaceFontFamily": "HarmonyOS Sans",
   "textFontFamily": "HarmonyOS Sans",
   "monospaceFontFamily": "JetBrains Mono",
-  "baseFontSize": 18,
+  "baseFontSize": 19,
   "translucency": false,
   "baseFontSizeAction": true
 }

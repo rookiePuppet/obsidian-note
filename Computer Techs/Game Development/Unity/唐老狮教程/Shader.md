@@ -6920,6 +6920,7 @@ Shader "Unlit/GaussianBlur"
 
         Pass
         {
+	        Name "GAUSSIAN_BLUR_HORIZONTAL"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -6941,6 +6942,7 @@ Shader "Unlit/GaussianBlur"
 
         Pass
         {
+	        Name "GAUSSIAN_BLUR_VERTICAL"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -6980,29 +6982,334 @@ public class ScreenPostProcessing_GaussianBlur : ScreenPostProcessing
             return;
         }
 
-        var textureSize = new Vector2Int(source.width / sizeReductionMultiplier, source.height / sizeReductionMultiplier);
+        var shrunkenSize =
+            new Vector2Int(source.width / sizeReductionMultiplier, source.height / sizeReductionMultiplier);
         var buffers = new RenderTexture[2];
         for (var i = 0; i < 2; i++)
         {
-            buffers[i] = RenderTexture.GetTemporary(textureSize.x, textureSize.y);
+            buffers[i] = RenderTexture.GetTemporary(shrunkenSize.x, shrunkenSize.y);
             buffers[i].filterMode = FilterMode.Bilinear;
         }
-        
+
         Graphics.Blit(source, buffers[0]);
         // 利用两个缓冲区迭代处理
         for (var i = 0; i < blurIterations; i++)
         {
             // 随着迭代次数增加，扩大采样间隔
-            Material.SetFloat(MaterialPropertyBlurSize, blurSize * i);
-            
+            Material.SetFloat(MaterialPropertyBlurSize, blurSize * (i + 1));
+
             Graphics.Blit(buffers[0], buffers[1], Material, 0);
             Graphics.Blit(buffers[1], buffers[0], Material, 1);
         }
+
         // 从第一个buffer获取最终图像
         Graphics.Blit(buffers[0], destination);
 
         RenderTexture.ReleaseTemporary(buffers[0]);
         RenderTexture.ReleaseTemporary(buffers[1]);
+    }
+}
+```
+
+#### Bloom
+
+Bloom是使画面中较亮区域产生一种光晕或发光效果的图像处理技术，主要用于模拟现实世界中强光源在相机镜头或人眼中造成的散射和反射现象，使画面中较亮区域扩散到周围，造成一种朦胧的效果。
+
+##### 原理
+
+实现Bloom的三个步骤：
+
+1. 提取：将图像中的亮度区域存储到一张新的纹理中
+2. 模糊：对提取出来的纹理进行模糊处理
+3. 合成：将原纹理和模糊过后的亮度纹理进行颜色叠加
+
+> 如何提取亮度区域
+
+设定一个亮度阈值，对像素进行灰度值计算，只保留灰度值高于阈值的像素。
+
+> 如何模糊
+
+一般采用高斯模糊，直接复用之前的高斯模糊的两个Pass，并声明一个纹理属性，在C#端处理完高斯模糊之后，将图像存放到该纹理中。
+
+> 如何合成
+
+对原图像和亮度纹理进行采样并相加即可。
+
+##### 实现
+
+```CS
+Shader "Unlit/Bloom"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _LuminanceThreshold("Luminance Threshold", Range(0,1)) = 0.2
+        _BloomTex("Bloom Texture", 2D)= "white" {}
+        _BlurSize("Blur Size", Float) = 1
+    }
+    SubShader
+    {
+        ZTest Always
+        ZWrite Off
+        Cull Off
+
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        sampler2D _MainTex;
+        float4 _MainTex_TexelSize;
+        sampler2D _BloomTex;
+        float _LuminanceThreshold;
+        ENDCG
+
+        // 提取亮度区域
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.texcoord;
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                fixed4 texel = tex2D(_MainTex, i.uv);
+                float grayScale = texel.r * 0.2126 + texel.g * 0.7152 + texel.b * 0.0722;
+                float value = clamp(grayScale - _LuminanceThreshold, 0.0, 1.0);
+                return fixed4(texel.rgb * value, 1);
+            }
+            ENDCG
+        }
+
+        // 高斯模糊处理
+        UsePass "Unlit/GaussianBlur/GAUSSIAN_BLUR_HORIZONTAL"
+        UsePass "Unlit/GaussianBlur/GAUSSIAN_BLUR_VERTICAL"
+
+        // 合并
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float4 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = v.texcoord;
+                o.uv.zw = v.texcoord;
+                // 使用RenderTexture写入纹理时，Unity可能会对Y轴进行翻转
+                // 利用UNITY_UV_STARTS_AT_TOP判断该平台的纹理坐标系原点是否在顶部
+                #if UNITY_UV_STARTS_AT_TOP
+                if (_MainTex_TexelSize.y < 0)
+                {
+                    o.uv.w = 1 - o.uv.w;
+                }
+                #endif
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                fixed3 source = tex2D(_MainTex, i.uv.xy).rgb;
+                fixed3 addition = tex2D(_BloomTex, i.uv.zw).rgb;
+                return fixed4(source + addition, 1);
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
+}
+```
+
+```CS
+public class ScreenPostProcessing_Bloom : ScreenPostProcessing
+{
+    [Range(0, 1)] public float luminanceThreshold = 0.2f;
+    [Range(1, 32)] public float blurSize = 1;
+    [Range(1, 32)] public int sizeReductionMultiplier = 1;
+    [Range(1, 16)] public int blurIterations = 1;
+
+    private static readonly int MaterialPropertyBlurSize = Shader.PropertyToID("_BlurSize");
+    private static readonly int MaterialPropertyLuminanceThreshold = Shader.PropertyToID("_LuminanceThreshold");
+    private static readonly int MaterialPropertyBloomTex = Shader.PropertyToID("_BloomTex");
+
+    protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (Material == null)
+        {
+            Graphics.Blit(source, destination);
+            return;
+        }
+        
+        var shrunkenSize = new Vector2Int(source.width / sizeReductionMultiplier, source.height / sizeReductionMultiplier);
+        var buffers = new RenderTexture[2];
+        for (var i = 0; i < 2; i++)
+        {
+            buffers[i] = RenderTexture.GetTemporary(shrunkenSize.x, shrunkenSize.y);
+            buffers[i].filterMode = FilterMode.Bilinear;
+        }
+        
+        // 提取
+        Material.SetFloat(MaterialPropertyLuminanceThreshold, luminanceThreshold);
+        Graphics.Blit(source, buffers[0], Material, 0);
+        // 模糊
+        for (var i = 0; i < blurIterations; i++)
+        {
+            // 随着迭代次数增加，扩大采样间隔
+            Material.SetFloat(MaterialPropertyBlurSize, blurSize * (i + 1));
+        
+            Graphics.Blit(buffers[0], buffers[1], Material, 1);
+            Graphics.Blit(buffers[1], buffers[0], Material, 2);
+        }
+        // 合并
+        Material.SetTexture(MaterialPropertyBloomTex, buffers[0]);
+        Graphics.Blit(source, destination, Material, 3);
+
+        RenderTexture.ReleaseTemporary(buffers[0]);
+        RenderTexture.ReleaseTemporary(buffers[1]);
+    }
+}
+```
+
+#### 运动模糊
+
+运动模糊是一种用于模拟真实世界中物体快速移动产生的模糊现象的图像处理技术。
+
+##### 原理
+
+有两种实现运动模糊的方式：
+
+1. 累积缓存：存储多帧图像信息，取加权平均值作为运动模糊图像。效果更好，但性能开销更大。
+2. 速度缓存：存储多帧速度信息，根据速度来决定模糊的方向和大小。性能更好，但效果较差，可能产生重影和伪影。
+
+实际上我们要采用的是基于累积缓存的方法，不会存储多帧图像，而是只存储上一帧的图像，然后叠加到当前的渲染图像上。虽然效果没那么好，但是仍然可以接受，并且性能更优。
+
+在Shader中利用一个变量来控制模糊程度，使用两个Pass进行处理：
+
+1. 混合当前屏幕图像和上一帧图像的RGB通道
+2. 混合当前屏幕图像和第一个Pass处理后的A通道，仅保留当前屏幕图像的A通道
+
+##### 实现
+
+```CS
+Shader "Unlit/MotionBlur"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _BlurDegree("Blur Degree", Range(0,1)) = 1
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        struct v2f
+        {
+            float2 uv : TEXCOORD0;
+            float4 vertex : SV_POSITION;
+        };
+
+        sampler2D _MainTex;
+        float _BlurDegree;
+
+        v2f vert(appdata_base v)
+        {
+            v2f o;
+            o.vertex = UnityObjectToClipPos(v.vertex);
+            o.uv = v.texcoord;
+            return o;
+        }
+        ENDCG
+
+        Pass
+        {
+            Blend SrcAlpha OneMinusSrcAlpha
+            ColorMask RGB
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return fixed4(tex2D(_MainTex, i.uv).rgb, _BlurDegree);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Blend One Zero
+            ColorMask A
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
+}
+```
+
+```CS
+public class ScreenPostProcessing_MotionBlur : ScreenPostProcessing
+{
+    [Range(0, 0.9f)] public float blurDegree;
+
+    private RenderTexture _lastFrameImage;
+
+    private static readonly int MaterialPropertyBlurDegree = Shader.PropertyToID("_BlurDegree");
+
+    protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (Material == null)
+        {
+            Graphics.Blit(source, destination);
+            return;
+        }
+        
+        if (_lastFrameImage == null || _lastFrameImage.width != source.width || _lastFrameImage.height != source.height)
+        {
+            DestroyImmediate(_lastFrameImage);
+            _lastFrameImage = new RenderTexture(source.width, source.height, 0)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            Graphics.Blit(source, _lastFrameImage);
+        }
+        
+        Material.SetFloat(MaterialPropertyBlurDegree, 1 - blurDegree);
+        Graphics.Blit(source, _lastFrameImage, Material);
+        Graphics.Blit(_lastFrameImage, destination);
     }
 }
 ```
