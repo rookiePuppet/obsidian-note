@@ -77,7 +77,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 305.5
+    "width": 305.5,
+    "collapsed": true
   },
   "right": {
     "id": "f2777f8a2b2fd799",
@@ -199,6 +200,8 @@
   },
   "active": "8464756c4e4032b0",
   "lastOpenFiles": [
+    "00_Attachments/Pasted image 20241118171404.png",
+    "00_Attachments/Pasted image 20241118171350.png",
     "00_Attachments/Pasted image 20241117115224.png",
     "00_Attachments/Pasted image 20241117113052.png",
     "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
@@ -239,8 +242,6 @@
     "Computer Techs/Game Development/Unity/文档笔记",
     "00_Attachments/Pasted image 20241104193916.png",
     "00_Attachments/Pasted image 20241004065140.jpg",
-    "00_Attachments/Pasted image 20241004064446.jpg",
-    "00_Attachments/Pasted image 20241004064354.jpg",
     "Game Design"
   ]
 }

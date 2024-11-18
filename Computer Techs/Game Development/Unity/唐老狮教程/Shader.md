@@ -6070,7 +6070,7 @@ Shader "Unlit/ProgramGeneratedTexture"
 
 获取程序材质的网站：Unity资源商店、Subtance社区、GameTextures
 
-### 动态效果
+## 动态效果
 
 在Shader中制作动态效果的关键就是，利用时间变化来改变Shader中的数据，从而引起渲染结果的改变。
 
@@ -6458,7 +6458,7 @@ Pass
 }
 ```
 
-### 屏幕后处理
+## 屏幕后处理
 
 屏幕后处理是一种在渲染管线的最后阶段应用的视觉效果，允许你在场景渲染完成后对最终图像进行各种调整和效果处理，以增强视觉体验。
 
@@ -6589,7 +6589,7 @@ public class ScreenPostProcessing : MonoBehaviour
 }
 ```
 
-#### 亮度、饱和度、对比度
+### 亮度、饱和度、对比度
 
 ##### 亮度
 
@@ -6688,7 +6688,7 @@ Shader "Unlit/ColorAdjustment"
 }
 ```
 
-#### 边缘检测
+### 边缘检测
 
 边缘检测主要通过检测图像中亮度显著变化的区域（边缘），然后对边缘进行描边或其他处理，是一种为了突出图像中的边缘，使物体轮廓更加明显的图像处理技术。
 
@@ -6824,7 +6824,7 @@ Shader "Unlit/EdgeDetection"
 }
 ```
 
-#### 高斯模糊
+### 高斯模糊
 
 高斯模糊是一种用于平滑图像并减少图像噪声和细节的图像处理技术。
 
@@ -7011,7 +7011,7 @@ public class ScreenPostProcessing_GaussianBlur : ScreenPostProcessing
 }
 ```
 
-#### Bloom
+### Bloom
 
 Bloom是使画面中较亮区域产生一种光晕或发光效果的图像处理技术，主要用于模拟现实世界中强光源在相机镜头或人眼中造成的散射和反射现象，使画面中较亮区域扩散到周围，造成一种朦胧的效果。
 
@@ -7191,7 +7191,7 @@ public class ScreenPostProcessing_Bloom : ScreenPostProcessing
 }
 ```
 
-#### 运动模糊
+### 运动模糊
 
 运动模糊是一种用于模拟真实世界中物体快速移动产生的模糊现象的图像处理技术。
 
@@ -7311,5 +7311,577 @@ public class ScreenPostProcessing_MotionBlur : ScreenPostProcessing
         Graphics.Blit(source, _lastFrameImage, Material);
         Graphics.Blit(_lastFrameImage, destination);
     }
+}
+```
+
+## 深度和法线纹理
+
+### 作用
+
+深度纹理可以利用深度信息，制作出边缘检测、运动模糊、景深、环境遮挡等效果。
+
+法线纹理可以利用法线信息，制作出屏幕空间环境遮挡（SSAO），基于屏幕空间的反射（SSR）、基于法线的边缘检查等效果。
+
+### 如何使用深度和法线纹理
+
+从摄像机对象中获取深度和法线纹理：
+
+```CS
+Camera.main.depthTextureMode = DepthTextureMode.Depth;
+Camera.main.depthTextureMode = DepthTextureMode.DepthNormals;
+Camera.main.depthTextureMode = DepthTextureMode.Depth | DepthTextureMode.DepthNormals;
+```
+
+在Shader中声明对应变量：
+
+```CS
+sampler2D _CameraDepthTexture;
+sampler2D _CameraDepthNormalsTexture; // RG对应法线，BA对应深度
+
+// 采样深度纹理，结果是非线性的
+float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+// 转换到观察空间
+float viewDepth = LinearEyeDepth(depth);
+// 转换到[0,1]区间
+float linearDepth = Linear01Depth(depth);
+
+// 采样深度法线纹理
+float4 depthNormal = tex2D(_CameraDepthNormalsTexture, i.uv);
+float depth;
+float3 normals;
+// 一次性获取深度和法线
+DecodeDepthNormal(depthNormal, depth, normals);
+// 单独提取深度
+depth = DecodeFloatRG(depthNormal.zw);
+// 单独提取法线
+normals = DecodeViewNormalStereo(depthNormal);
+```
+
+### 原理
+
+#### 深度和法线纹理中存储的信息
+
+深度纹理中的信息是进行裁剪空间变换后的z分量转换到0~1之后的结果。
+
+法线纹理中的信息是观察空间下的法线转换到0~1之后的结果。
+
+因为齐次裁剪空间的坐标范围和观察空间的单位向量分量的取值范围都是-1~1，而纹理中存储的数据范围是0~1，所以Unity会将-1~1范围转换到0~1。
+
+#### Unity如何获取深度和法线纹理
+
+Unity主要通过两种方式获取深度和法线纹理：
+
+1. 从G-buffer几何缓冲区中获取
+2. 由一个专门的Pass渲染而来
+
+如果使用的是延迟渲染路径，由于该路径将深度和法线等信息存储在G-buffer中，所以可以直接从G-buffer中获取。
+
+对于其他渲染路径，就会通过一个单独的Pass来进行渲染。
+
+对于深度纹理来说，Unity会使用着色器替换技术，使用渲染类型为Opaque，以及渲染队列小于等于2500的Shader的阴影投射Pass来得到深度纹理。
+
+对于法线纹理来说，Unity会使用一个单独的Pass，把整个场景再次渲染一遍，从而得到深度和法线信息。
+
+> 注意事项
+
+1. 必须在Shader中正确设置RenderType
+2. 必须有ShadowCaster Pass
+
+#### 深度和法线纹理使用时调用的函数
+
+> SAMPLE_DEPTH_TEXTURE
+
+适配不同平台，内部使用针对不同平台的采样规则对深度纹理进行采样。
+
+结果是裁剪空间下的z分量转换到0~1的值。
+
+> LinearEyeDepth、Linear01Depth
+
+从深度纹理中采样得到的深度值是非线性的，也就是说在透视摄像机的裁剪空间中，深度值的分布是不均匀的。
+
+当靠近近裁剪面时，深度值变化迅速，精度高，当靠近原裁剪面时，深度值变化缓慢，精度低。
+
+为了在使用深度值时，计算结果更加准确，需要使用
+LinearEyeDepth和Linear01Depth函数来获取线性的深度值。
+
+- LinearEyeDepth：像素到摄像机的实际距离
+- Linear01Depth：被压缩到0~1的实际距离、
+
+> DecodeDepthNormal
+
+获取观察空间下的对应像素的法线和线性深度值。
+
+内部调用了DecodeFloatRG和DecodeViewNormalStereo函数，也可以选择分别调用这两个函数。
+
+函数中具体的操作：利用法线的xy算出z，得到最终法线。将裁剪空间下的非线性深度值转换为观察空间下线性的深度值（0~1）。
+
+### 运动模糊
+
+利用深度纹理实现的运动模糊效果需要注意的是：
+
+1. 只适用于场景静止，摄像机快速移动的情况，也就是说只有摄像机移动时才能看到模糊效果。
+2. 不是基于真实的物理运动规律来计算的，只是一种近似计算。
+
+#### 原理
+
+得到像素当前帧和上一帧在裁剪空间下的位置，计算出物体的运动方向，从而模拟出运动模糊效果。
+
+> 如何得到像素当前帧和上一帧在裁剪空间下的位置
+
+1. 利用UV坐标和深度值组合成一个裁剪空间下的组合坐标nowClipPos
+2. 利用当前帧 世界$\rightarrow$裁剪 变换矩阵的逆矩阵，将nowClipPos变换到世界空间
+3. 利用上一帧的 世界$\rightarrow$裁剪 变换矩阵，计算出上一帧在世界空间下的oldClipPos在裁剪空间下的位置
+
+> 如何得到运动方向
+
+ 将当前帧位置和上一帧位置相减即可。
+
+> 如何模拟运动模糊效果
+
+利用运动方向在纹理中进行多次uv坐标偏移采样，将颜色累加，最后取算术平均值。
+
+#### 实现
+
+```CS
+Shader "Hidden/MotionBlurWithDepth"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _BlurSize("Blur Size",Float) = 1
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float4 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+            float _BlurSize;
+            sampler2D _CameraDepthTexture;
+            float4x4 _ClipToWorldMatrix;
+            float4x4 _LastWorldToClipMatrix;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = v.texcoord;
+                o.uv.zw = v.texcoord;
+                #if UNITY_UV_STARTS_AT_TOP
+                if (_MainTex_TexelSize.y < 0.0)
+                {
+                    o.uv.w = 1 - o.uv.w;
+                }
+                #endif
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                // 采样深度纹理
+                float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv.zw);
+                // 计算运动方向
+                float4 clipPos = float4(i.uv.z * 2 - 1, i.uv.w * 2 - 1, depth * 2 - 1, 1);
+                float4 worldPos = mul(_ClipToWorldMatrix, clipPos);
+                worldPos /= worldPos.w;
+                float4 lastClipPos = mul(_LastWorldToClipMatrix, worldPos);
+                lastClipPos /= lastClipPos.w;
+                float2 motionDir = (clipPos.xy - lastClipPos.xy) / 2.0;
+                // 模糊处理
+                float4 color = float4(0.0, 0.0, 0.0, 1.0);
+                for (int it = 0; it < 3; it++)
+                {
+                    color += tex2D(_MainTex, i.uv.xy);
+                    i.uv.xy += _BlurSize * motionDir;
+                }
+                color /= 3;
+                return color;
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
+}
+```
+
+```CS
+public class ScreenPostProcessing_MotionBlurWithDepth : ScreenPostProcessing
+{
+    [Range(0, 1)] public float blurSize = 0.6f;
+    
+    private Matrix4x4 _lastWorldToClipMatrix;
+    private Camera _camera;
+    
+    private static readonly int ClipToWorldMatrix = Shader.PropertyToID("_ClipToWorldMatrix");
+    private static readonly int LastWorldToClipMatrix = Shader.PropertyToID("_LastWorldToClipMatrix");
+    private static readonly int BlurSize = Shader.PropertyToID("_BlurSize");
+
+    private void OnEnable()
+    {
+        _camera = GetComponent<Camera>();
+        _lastWorldToClipMatrix = _camera.projectionMatrix * _camera.worldToCameraMatrix;
+    }
+
+    private void Start()
+    {
+        _camera.depthTextureMode = DepthTextureMode.Depth;
+    }
+
+    protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (Material == null)
+        {
+            Graphics.Blit(source, destination);
+            return;
+        }
+
+        var worldToClipMatrix = _camera.projectionMatrix * _camera.worldToCameraMatrix;
+        Material.SetMatrix(ClipToWorldMatrix, worldToClipMatrix.inverse);
+        Material.SetMatrix(LastWorldToClipMatrix, _lastWorldToClipMatrix);
+        Material.SetFloat(BlurSize, blurSize);
+
+        _lastWorldToClipMatrix = worldToClipMatrix;
+
+        Graphics.Blit(source, destination, Material);
+    }
+}
+```
+
+### 全局雾效
+
+全局雾效是用于模拟大气中的雾气对物体遮挡的视觉效果。
+
+#### Unity自带的全局雾效
+
+在Lighting窗口的Environment页签中开启全局雾效。
+
+三种计算方式用来计算雾的混合因子f：
+
+1. Linear：$f=(end-|d|)/(end-start)$
+2. Exponential：$f=1-e^{-density*|d|}$
+3. Exponential Squared：$f=1-e^{-(density-|d|)^2}$
+
+$$
+FinalColor=(1-f)*Color_{original}+f*Color_{fog}
+$$
+
+#### 使用深度纹理实现全局雾效
+
+Unity自带的全局雾效的缺点如下：
+
+1. 需要为每个自定义的Shader按规则添加雾效处理代码。
+2. 自带的全局雾效无法实现一些自定义效果：如基于高度的雾效（悬浮水雾），不规则、动态雾效等。
+
+##### 原理
+
+ 计算全局雾效的关键是得到像素和摄像机之间的距离。
+
+$$
+WorldPosition_{pixel}=WorldPosition_{camera}+Depth*Direction_{CameraToPixel}
+$$
+
+> 如何计算摄像机指向像素世界坐标的方向向量
+
+因为在裁剪变换中，将观察空间变换到了裁剪空间，再到NDC空间，再到屏幕空间，所以屏幕图像的四个顶点就相当于摄像机视锥体的近裁剪面上的四个顶点。
+
+![[Pasted image 20241118171404.png]]
+
+```CS
+halfHeight = Near*tan(FOV/2);
+halfWidth = halfHeight*aspect;
+toTop = up*halfHeight;
+toRight = right*halfWidth;
+
+topLeft = forward*Near + toTop - toRight;
+topRight = forward*Near + toTop + toRight;
+bottomLeft = forward*Near - toTop - toRight;
+bottomRight = forward*Near - toTop + toRight;
+```
+
+由于从深度纹理采样得到的深度值，即使转换为观察空间中的线性深度值，其代表的仍然是像素和摄像机在Z轴上的距离，并不是两点之间的距离。
+
+利用三角形相似原理，推导出深度值和欧氏距离之间的关系。
+
+![[Pasted image 20241118171350.png]]
+
+$$
+\frac{Depth}{Near}=\frac{distance}{|TopLeft|}
+$$
+
+```CS
+scale = topLeft.magnitude / Near;
+topLeft = topLeft.normalized * scale;
+...
+```
+
+##### 实现
+
+```CS
+Shader "Unlit/GlobalFog"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _FogColor("Fog Color", Color) = (1,1,1,1)
+        _FogDensity("Fog Density", Float) = 1
+        _FogStart("Fog Start", Float) = 1
+        _FogEnd("Fog End", Float) = 10
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+            sampler2D _CameraDepthTexture;
+            fixed4 _FogColor;
+            float _FogDensity;
+            float _FogStart;
+            float _FogEnd;
+            float4x4 _Rays;
+
+            struct v2f
+            {
+                float4 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float4 ray: TEXCOORD1;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = v.texcoord;
+                o.uv.zw = v.texcoord;
+                int index = 0;
+                if (v.texcoord.x > 0.5 && v.texcoord.y < 0.5) index = 1;
+                else if (v.texcoord.x > 0.5 && v.texcoord.y > 0.5) index = 2;
+                else if (v.texcoord.x < 0.5 && v.texcoord.y > 0.5) index = 3;
+                #if UNITY_UV_STARTS_AT_TOP
+                if (_MainTex_TexelSize.y < 0)
+                {
+                    o.uv.w = 1 - o.uv.w;
+                    index = 3 - index;
+                }
+                #endif
+                o.ray = _Rays[index];
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float depth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv.zw));
+                float3 worldPos = _WorldSpaceCameraPos + i.ray.xyz * depth;
+                float f = (_FogEnd - worldPos.y)/(_FogEnd-_FogStart);
+                f = saturate(f * _FogDensity);
+                return lerp(tex2D(_MainTex, i.uv.xy), _FogColor, f);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+```CS
+public class ScreenPostProcessing_GlobalFog : ScreenPostProcessing
+{
+    public Color fogColor = Color.gray;
+    [Range(0, 3)] public float fogDensity = 0.5f;
+    public float fogStart = 1.0f;
+    public float fogEnd = 1.0f;
+
+    private Camera _camera;
+
+    private void OnEnable()
+    {
+        _camera = GetComponent<Camera>();
+    }
+
+    private void Start()
+    {
+        _camera.depthTextureMode = DepthTextureMode.Depth;
+    }
+
+    protected override void UpdateMaterialProperty()
+    {
+        var halfHeight = _camera.nearClipPlane * Mathf.Tan(Mathf.Deg2Rad * _camera.fieldOfView / 2);
+        var halfWidth = _camera.aspect * halfHeight;
+        var toRight = transform.right * halfWidth;
+        var toTop = transform.up * halfHeight;
+
+        var forward = transform.forward * _camera.nearClipPlane;
+
+        var leftTop = forward - toRight + toTop;
+        var rightTop = forward + toRight + toTop;
+        var leftBottom = forward - toRight - toTop;
+        var rightBottom = forward + toRight - toTop;
+
+        var scale = leftTop.magnitude / _camera.nearClipPlane;
+        leftTop = leftTop.normalized * scale;
+        rightTop = rightTop.normalized * scale;
+        leftBottom = leftBottom.normalized * scale;
+        rightBottom = rightBottom.normalized * scale;
+
+        var rays = new Matrix4x4();
+        rays.SetRow(0, leftBottom);
+        rays.SetRow(1, rightBottom);
+        rays.SetRow(2, rightTop);
+        rays.SetRow(3, leftTop);
+
+        Material.SetMatrix(PropertyIDs.Rays, rays);
+        Material.SetColor(PropertyIDs.FogColor, fogColor);
+        Material.SetFloat(PropertyIDs.FogDensity, fogDensity);
+        Material.SetFloat(PropertyIDs.FogStart, fogStart);
+        Material.SetFloat(PropertyIDs.FogEnd, fogEnd);
+    }
+
+    private static class PropertyIDs
+    {
+        internal static readonly int FogColor = Shader.PropertyToID("_FogColor");
+        internal static readonly int FogDensity = Shader.PropertyToID("_FogDensity");
+        internal static readonly int FogStart = Shader.PropertyToID("_FogStart");
+        internal static readonly int FogEnd = Shader.PropertyToID("_FogEnd");
+        internal static readonly int Rays = Shader.PropertyToID("_Rays");
+    }
+}
+```
+
+### 边缘检测
+
+利用Sobel算子基于像素灰度值计算实现的边缘检测效果总体来说不太理想，物体的纹理和阴影都会被识别为阴影，并不能准确检测出物体的真实轮廓。
+
+基于法线和深度纹理实现的边缘检测，不会受纹理和光照影响，更加准确。
+
+#### 原理
+
+基于Roberts算子，通过比较对角线上的像素的深度和法线值，判断是否在边缘上。
+
+> 如何获取对角线上的像素
+
+在顶点着色器中，利用纹素进行uv坐标偏移计算，并且添加一个采样偏移距离变量，控制描边的粗细。
+
+> 如何进行深度值和法线值比较
+
+在片元着色器中，采样深度和法线纹理，计算对角像素的深度值差和法线值差，如果其中一个差值大于了设定的阈值，就认为该像素在边缘上。
+
+```CS
+float depthDiff = abs(depth1 - depth2) * DepthSensitivity;
+float2 normalDiff = abs(normal1 - normal2) * _NormalSensitivity;
+half isDepthSame = depthDiff < 0.1 * depth1.w;
+half isNormalSame = normalDiff.x + normalDiff.y < 0.1;
+```
+
+#### 实现
+
+```CS
+Shader "Unlit/EdgeDetectionWithDepthNormal"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _EdgeColor("Edge Color", Color) = (1,1,1,1)
+        _RemainOriginalImage("Remain Original Image", Range(0,1)) = 1
+        _ReplaceColor("Replace Color", Color) = (1,1,1,1)
+        _SampleDistance("SampleDistance", Float) = 1
+        _DepthSensitivity("Depth Sensitivity", Float) = 1
+        _NormalSensitivity("Normal Sensitivity", Float) = 1
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            sampler2D _CameraDepthNormalsTexture;
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+            fixed4 _EdgeColor;
+            float _RemainOriginalImage;
+            fixed4 _ReplaceColor;
+            float _SampleDistance;
+            float _DepthSensitivity;
+            float _NormalSensitivity;
+
+            struct v2f
+            {
+                float2 uv[5] : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv[0] = v.texcoord;
+                #if UNITY_UV_STARTS_AT_TOP
+                if (_MainTex_TexelSize.y < 0)
+                    v.texcoord.y = 1 - v.texcoord.y;
+                #endif
+                o.uv[1] = v.texcoord + half2(-1, 1) * _SampleDistance * _MainTex_TexelSize.xy;
+                o.uv[2] = v.texcoord + half2(1, -1) * _SampleDistance * _MainTex_TexelSize.xy;
+                o.uv[3] = v.texcoord + half2(-1, -1) * _SampleDistance * _MainTex_TexelSize.xy;
+                o.uv[4] = v.texcoord + half2(1, 1) * _SampleDistance * _MainTex_TexelSize.xy;
+                return o;
+            }
+
+            half IsOnSameFace(float2 uv1, float2 uv2)
+            {
+                float4 depthNormal1;
+                float4 depthNormal2;
+                DecodeDepthNormal(tex2D(_CameraDepthNormalsTexture, uv1), depthNormal1.w, depthNormal1.xyz);
+                DecodeDepthNormal(tex2D(_CameraDepthNormalsTexture, uv2), depthNormal2.w, depthNormal2.xyz);
+
+                float depthDiff = abs(depthNormal1.w - depthNormal2.w) * _DepthSensitivity;
+                float2 normalDiff = abs(depthNormal1.xy - depthNormal2.xy) * _NormalSensitivity;
+                half isDepthSame = depthDiff < 0.1 * depthNormal1.w;
+                half isNormalSame = normalDiff.x + normalDiff.y < 0.1;
+
+                return isDepthSame * isNormalSame ? 1.0 : 0.0;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                half isOnSameFace = IsOnSameFace(i.uv[1], i.uv[2]);
+                isOnSameFace *= IsOnSameFace(i.uv[3], i.uv[4]);
+
+                fixed3 originalColorWithEdge = lerp(_EdgeColor, tex2D(_MainTex, i.uv[0]), isOnSameFace);
+                fixed3 replaceColorWithEdge = lerp(_EdgeColor, _ReplaceColor, isOnSameFace);
+
+                return float4(lerp(replaceColorWithEdge, originalColorWithEdge, _RemainOriginalImage), 1);
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
 }
 ```
