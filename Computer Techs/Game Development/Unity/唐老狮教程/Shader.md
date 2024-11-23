@@ -2190,7 +2190,7 @@ Unity中常用的内置文件有：
 1. `_Time`：自关卡加载以来的时间，用于对着色器内的事物进行动画处理。不用引用，直接使用即可。
 2. `_LightColor0`：光的颜色。
 
-# Shader入门知识
+# 入门
 
 ## 光照模型
 
@@ -4189,7 +4189,7 @@ Shader "Custom/AlphaBlend"
 
 对于透明度混合Shader，由于需要进行混合，需要使用两个Pass，一个用于渲染背面，一个用于渲染正面，两个Pass中除了剔除命令不同，其他代码和之前一致。
 
-# Shader基础知识
+# 基础
 
 ## 光照和阴影
 
@@ -7883,5 +7883,310 @@ Shader "Unlit/EdgeDetectionWithDepthNormal"
         }
     }
     Fallback Off
+}
+```
+
+# 实践
+
+## 流光效果
+
+流光效果是一种动态的视觉效果，通常用于给材质增加一种闪光或光线移动的效果，使物体表面看起来像是有光在流动。
+
+### 原理
+
+利用时间变量，让UV坐标沿着一个固定的方向持续递增，然后使用偏移后的UV对纹理进行采样。
+
+### 美术注意事项
+
+1. UV需要均匀平滑展开，否则流光移动会出现扭曲和不自然。
+2. 不同部位的UV比例要一致，确保流光的移动速度在整个模型上是一致的。
+3. 贴图需要无缝衔接，避免流光效果在边界外出现断裂或跳跃。
+
+### 实现
+
+```CS
+Shader "Unlit/FlowingLight"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Color("Color", Color) = (1,1,1,1)
+        _Speed("Speed", Float) = 1
+        _Direction("Direction", Vector) = (1,0,0,0)
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Transparent"
+            "Queue"="Transparent"
+            "IgnoreProjector"="True"
+        }
+        Cull Off
+        ZWrite Off
+        Blend One One
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _Speed;
+            half4 _Color;
+            half4 _Direction;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                i.uv.x += _Direction.x * _Time.x * _Speed;
+                i.uv.y += _Direction.y * _Time.x * _Speed;
+                return tex2D(_MainTex, i.uv) * _Color;
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 模型描边效果
+
+模型描边用于让单个3D模型产生描边效果，使模型的轮廓更加突出，一般用在卡通渲染、手绘/漫画风格的游戏中，还可以用来制作对象选中效果。
+
+### 原理
+
+使用两个Pass来渲染，第一个Pass渲染沿法线方向放大的模型，第二个Pass渲染正常的模型。
+
+相当于先用纯色渲染一次放大后的模型，再用模型本来的颜色覆盖重合部分。
+
+> 如何放大模型
+
+在顶点着色器中将顶点沿法线方向进行偏移，偏移距离作为一个参数，控制边缘线粗细。
+
+在片元着色器中直接返回一个自定义颜色即可。
+
+> 如何覆盖重合部分
+
+将第一个Pass的深度写入关闭，第二个Pass按需求正常渲染模型即可。
+
+### 实现
+
+```CS
+Shader "Unlit/Stroke"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _StrokeColor("Stroke Color", Color) = (1,1,1,1)
+        _StrokeSize("Stroke Size", Float) = 1
+    }
+    SubShader
+    {
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        sampler2D _MainTex;
+        float4 _MainTex_ST;
+        half4 _StrokeColor;
+        float _StrokeSize;
+        ENDCG
+
+        Pass
+        {
+            Tags
+            {
+                "IgnoreProjector"="True"
+                "RenderType"="Transparent"
+            }
+            ZWrite Off
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                float3 newVertex = v.vertex + v.normal * _StrokeSize;
+                o.vertex = UnityObjectToClipPos(newVertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return _StrokeColor;
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Tags{
+                "LightMode"="ForwardBase"
+            }
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 遮挡半透明效果
+
+遮挡半透明效果能够使物体被遮挡的部分呈现出半透明或其他能被看到的效果。
+
+### 原理
+
+使用两个Pass渲染对象，第一个Pass渲染被遮挡部分，第二个Pass渲染未被遮挡部分。
+
+> 如何渲染被遮挡部分
+
+设置深度测试规则为Greater，让被遮挡部分（深度值较高）能够通过深度测试，从而渲染出来。
+
+关闭深度写入，避免第二个Pass的内容通过深度测试而渲染出未被遮挡的错误效果。
+
+> 自定义半透明效果
+
+要实现类似X射线的效果，即边缘不透明，中间透明，可以利用菲涅尔反射公式来实现。
+
+### 实现
+
+```CS
+Shader "Unlit/OcclusionTranslucency"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _OcclusionPartColor("OcclusionPartColor", Color) = (1,1,1,1)
+        _FresnelScale("FresnelScale", Range(0,1)) = 1
+        _FresnelN("FrenelN", Range(0,10)) = 0.5
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        sampler2D _MainTex;
+        float4 _MainTex_ST;
+        half4 _OcclusionPartColor;
+        float _OcclusionPartAlpha;
+        float _FresnelScale;
+        float _FresnelN;
+        ENDCG
+
+        Pass
+        {
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZTest Greater
+            ZWrite Off
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float4 vertex : SV_POSITION;
+                float3 worldPos: TEXCOORD1;
+                half3 worldNormal:TEXCOORD2;
+                half3 viewDir: TEXCOORD3;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex);
+                o.worldNormal = normalize(UnityObjectToWorldNormal(v.normal));
+                o.viewDir = normalize(UnityWorldSpaceViewDir(o.worldPos));
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float reflectivity = _FresnelScale + (1 - _FresnelScale) * pow(
+                    1 - dot(i.viewDir, i.worldNormal), _FresnelN);
+                return fixed4(_OcclusionPartColor.rgb, reflectivity);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv);
+            }
+            ENDCG
+        }
+    }
 }
 ```
