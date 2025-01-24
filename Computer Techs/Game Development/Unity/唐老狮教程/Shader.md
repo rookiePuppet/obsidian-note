@@ -8190,3 +8190,856 @@ Shader "Unlit/OcclusionTranslucency"
     }
 }
 ```
+
+## 物体切割效果
+
+物体切割效果是一种物体看似被切割或隐藏一部分的视觉效果。
+
+### 原理
+
+在片元着色器中判断片元的世界坐标是否满足切割条件，若满足则直接抛弃片元不进行渲染，同时判断片元处于模型的正面或反面，决定使用哪种纹理进行渲染。
+
+> 判断世界坐标
+
+在Shader中声明一个Vector坐标变量，通过C#代码将物体被切割位置的世界空间坐标传递给Shader。
+
+> 判断片元的正反面
+
+将使用`VFACE`语义的参数传递给片元着色器，值为1表示正面，-1表示背面。
+
+```C
+fixed4 frag(v2f i, fixed face: VFACE) : SV_Target
+```
+
+使用该语义时建议加上编译指令`#pragma target 3.0`，设置着色器模型版本，提高兼容性。
+
+### 实现
+
+```C
+Shader "Unlit/ObjectCutting"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _BackTex ("Back Texture", 2D) = "white" {}
+        _CuttingDir("CuttingDir", Float)=0
+        _Invert("Invert", Float) = 0
+        _CuttingPos("CuttingPos", Vector) = (0,0,0,0)
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
+        Cull Off
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+                float3 worldPos: TEXCOORD1;
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float3 worldPos : TEXCOORD1;
+            };
+
+            sampler2D _MainTex;
+            sampler2D _BackTex;
+            float _CuttingDir;
+            float _Invert;
+            float4 _CuttingPos;
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                return o;
+            }
+
+            fixed4 frag(v2f i, fixed face: VFACE) : SV_Target
+            {
+                half4 color = face > 0 ? tex2D(_MainTex, i.uv) : tex2D(_BackTex, i.uv);
+
+                half cutValue;
+                if (_CuttingDir == 0)
+                    cutValue = step(_CuttingPos.x, i.worldPos.x);
+                else if (_CuttingDir == 1)
+                    cutValue = step(_CuttingPos.y, i.worldPos.y);
+                else
+                    cutValue = step(_CuttingPos.z, i.worldPos.z);
+
+                cutValue = _Invert ? 1 - cutValue : cutValue;
+
+                if (cutValue == 0)
+                    clip(-1);
+
+                return color;
+            }
+            ENDCG
+        }
+    }
+    FallBack "Diffuse"
+}
+```
+
+## 书本翻页效果
+
+书本翻页效果是用Shader模拟的书本翻页时的动态效果，常用于制作3D 书本UI交互功能。
+
+### 原理
+
+基本原理就是对顶点进行平移、旋转、再平移，并利用三角函数制作出起伏感。
+
+### 实现
+
+```C
+Shader "Unlit/PageTurning"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _BackTex ("Back Texture", 2D) = "white" {}
+        _Angle("Angle", Float) = 0
+        _MoveDistance("Move Distance", Float) = 0
+        _WaveLength("Wave Length", Float) = 1
+        _WeightX("Weight X", Float) = 0
+        _WeightY("Weight Y", Float) = 0
+    }
+    SubShader
+    {
+        Pass
+        {
+            Cull Off
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            sampler2D _BackTex;
+            float _Angle;
+            float _MoveDistance;
+            float _WaveLength;
+            float _WeightX;
+            float _WeightY;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                float sinVal, cosVal;
+                sincos(radians(_Angle), sinVal, cosVal);
+                float4x4 rotation = {
+                    cosVal, -sinVal, 0, 0,
+                    sinVal, cosVal, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1
+                };
+                float4 translation = {_MoveDistance, 0, 0, 0};
+
+                v.vertex += translation; // 平移的目的是使物体绕左侧轴而非中心轴进行旋转
+
+                float weight = 1 - abs(90 - _Angle) / 90;
+                v.vertex.x -= v.vertex.x * weight * _WeightX; // 水平方向收缩
+                v.vertex.y += sin(v.vertex.x * _WaveLength) * weight * _WeightY; // 垂直方向起伏
+
+                v.vertex = mul(rotation, v.vertex);
+                v.vertex -= translation;
+
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.texcoord;
+                return o;
+            }
+
+
+            fixed4 frag(v2f i, float face: VFACE) : SV_Target
+            {
+                fixed4 col = face > 0 ? tex2D(_MainTex, i.uv) : tex2D(_BackTex, i.uv);
+                return col;
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 卡通风格渲染
+
+卡通风格渲染属于非真实感渲染，目的是使模型看起来像是2D的手绘卡通或漫画风格，而不是逼真写实的渲染。
+
+### 原理
+
+一句话总结就是：让光的效果变硬并且实现轮廓描边。
+
+> 让光的效果变硬
+
+对于漫反射部分，利用半兰伯特公式的后半部分计算出一个0~1的值，对一张渐变纹理采样，得到的颜色和原本颜色进行叠加。
+
+对于高光反射部分，使用step函数替代原本的幂运算，使高光反射系数取值为0或1，取消平滑过渡。
+
+> 轮廓描边
+
+第一个Pass渲染模型的背面，将顶点沿法线方向偏移扩大，第二个Pass正常渲染模型的正面即可。
+
+模型背面指的是法线与摄像机面朝向呈钝角的部分。
+
+### 实现
+
+```C
+Shader "Unlit/ToonShading"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _GradientTex ("Gradient Texture", 2D) = "white" {}
+        _OutlineSize("Outline Size", Float) = 1
+        _OutlineColor("Outline Color", Color) = (0,0,0,0)
+        _SpecularScale("Specular Scale", Float) = 1
+        _SpecularColor("Specular Color", Color) =(1,1,1,1)
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
+
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        sampler2D _MainTex;
+        float4 _MainTex_ST;
+        sampler2D _GradientTex;
+        float4 _GradientTex_ST;
+        float _OutlineSize;
+        half4 _OutlineColor;
+        half4 _SpecularColor;
+        float _SpecularScale;
+        ENDCG
+
+        Pass
+        {
+            Cull Front
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                v.vertex.xyz += v.normal * _OutlineSize;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return _OutlineColor;
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float3 worldPos: TEXCOORD1;
+                float3 worldNormal: TEXCOORD2;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex);
+                o.worldNormal = normalize(UnityObjectToWorldNormal(v.normal));
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldPos));
+                float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
+                float3 halfDir = normalize(lightDir + viewDir);
+
+                float halfLambert = saturate(dot(i.worldNormal, lightDir)) * 0.5 + 0.5;
+                float blinnPhong = saturate(dot(i.worldNormal, halfDir));
+
+                fixed4 diffuseColor = tex2D(_GradientTex, float2(halfLambert, halfLambert));
+                fixed4 specularColor = _SpecularColor * step(_SpecularScale, blinnPhong);
+
+                return diffuseColor + specularColor;
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 素描风格渲染
+
+素描风格渲染也是一种非真实感渲染，目的是使3D模型看起来像手绘素描的感觉。
+
+### 原理
+
+用漫反射系数计算采样权重，在多张具有不同密度和方向的素描纹理中采样，再将采样结果进行叠加得到最终效果。
+
+> 计算采样权重
+
+利用兰伯特光照公式计算漫反射强度，将值从0~1扩大到0~n，n为素描纹理数+1。
+
+在0~n范围内可以划分出n个区间，假设有6张素描纹理，当值位于0~1区间时，就从第5和第6张纹理中采样，当值位于1~2区间时，就从第4和第5张纹理中采样，……当值位于6~7区间时，不从素描纹理中采样。
+
+### 原理
+
+```C
+Shader "Unlit/SketchShading"
+{
+    Properties
+    {
+        _Color ("Color", Color) = (1,1,1,1)
+        _TileFactor("Tile Factor", Range(0, 10))=1
+        _Sketch0("Sketch0", 2D) = ""{}
+        _Sketch1("Sketch1", 2D) = ""{}
+        _Sketch2("Sketch2", 2D) = ""{}
+        _Sketch3("Sketch3", 2D) = ""{}
+        _Sketch4("Sketch4", 2D) = ""{}
+        _Sketch5("Sketch5", 2D) = ""{}
+        _OutlineSize("Outline Size", Range(0,0.1)) = 0.02
+        _OutlineColor("Outline Color", Color) = (0,0,0,0)
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
+        UsePass "Unlit/ToonShading/OUTLINE"
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float4 vertex : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                half3 sketchWeights0: TEXCOORD1;
+                half3 sketchWeights1: TEXCOORD2;
+            };
+
+            half4 _Color;
+            float _TileFactor;
+            sampler2D _Sketch0;
+            sampler2D _Sketch1;
+            sampler2D _Sketch2;
+            sampler2D _Sketch3;
+            sampler2D _Sketch4;
+            sampler2D _Sketch5;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.texcoord.xy * _TileFactor;
+
+                float3 lightDir = normalize(ObjSpaceLightDir(v.vertex));
+                float lambert = saturate(dot(v.normal, lightDir));
+                lambert *= 7;
+
+                o.sketchWeights0 = half3(0, 0, 0);
+                o.sketchWeights1 = half3(0, 0, 0);
+
+                if (lambert > 6.0)
+                {
+                }
+                else if (lambert > 5.0)
+                {
+                    o.sketchWeights0.x = lambert - 5.0;
+                }
+                else if (lambert > 4.0)
+                {
+                    o.sketchWeights0.x = lambert - 4.0;
+                    o.sketchWeights0.y = 1 - o.sketchWeights0.x;
+                }
+                else if (lambert > 3.0)
+                {
+                    o.sketchWeights0.y = lambert - 3.0;
+                    o.sketchWeights0.z = 1 - o.sketchWeights0.y;
+                }
+                else if (lambert > 2.0)
+                {
+                    o.sketchWeights0.z = lambert - 2.0;
+                    o.sketchWeights1.x = 1 - o.sketchWeights0.z;
+                }
+                else if (lambert > 1.0)
+                {
+                    o.sketchWeights1.x = lambert - 1.0;
+                    o.sketchWeights1.y = 1 - o.sketchWeights1.x;
+                }
+                else
+                {
+                    o.sketchWeights1.y = lambert;
+                    o.sketchWeights1.z = 1 - o.sketchWeights1.y;
+                }
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                half3 sketchColor = tex2D(_Sketch0, i.uv) * i.sketchWeights0.x +
+                    tex2D(_Sketch1, i.uv).rgb * i.sketchWeights0.y + tex2D(_Sketch2, i.uv).rgb * i.sketchWeights0.z +
+                    tex2D(_Sketch3, i.uv).rgb * i.sketchWeights1.x + tex2D(_Sketch4, i.uv).rgb * i.sketchWeights1.y +
+                    tex2D(_Sketch5, i.uv).rgb * i.sketchWeights1.z;
+                half3 whiteColor = half3(1, 1, 1) * (1 - i.sketchWeights0.x - i.sketchWeights0.y
+                    - i.sketchWeights0.z - i.sketchWeights1.x - i.sketchWeights1.y - i.sketchWeights1.z);
+
+                return half4(sketchColor + whiteColor, 1);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 噪声
+
+噪声是一种程序生成的随机或伪随机数据，在图形学中常用来创建各种自然现象和复杂纹理效果，其本质是一种由数学算法生成的有规则或可控的随机数据。
+
+> 特点
+
+1. 随机性：噪声数据是不规则的，无法通过简单的模式预测
+2. 平滑性：数据不会突然跳跃或变化，而是有过渡效果，适合模拟自然现象
+3. 周期性：随着坐标的变化，噪声值会重复出现，形成一个封闭的循环
+4. 可调性：大多数噪声算法的输出是可调整的，可根据需求灵活地控制噪声的表现，适应不同的视觉效果或逻辑处理需求
+5. 多维性：能够处理多维数据，也就是说可以生成二维、三维甚至更高维度的噪声数据
+
+> 应用
+
+1. 地形生成
+2. 云层效果
+3. 烟雾效果
+4. 水面模拟
+5. 消融效果
+6. ……
+
+### 常用噪声算法
+
+1. 柏林噪声（Perlin Noise）：适合生成自然现象的纹理，比如云、火焰、地形
+2. 简单噪声（Simplex Noise）：柏林噪声的优化版，更适合实时计算，例如体积云、流体动画等
+3. 随机噪声/白噪音（Random Function）：计算简单，适合生成粒子效果或星空背景
+4. 分形噪声（Fractal Noise）：将多层柏林噪声或简单噪声叠加生成复杂效果，适用于高细节地形、云层、火焰等效果
+5. 沃利噪声（Worley Noise）：生成类似”细胞“的纹理，适用于模拟裂纹或有机表面等
+
+### 如何在Unity中使用噪声
+
+1. 使用Unity或第三方库提供的噪声算法API，例如Mathf.PerlinNoise
+2. 根据噪声算法原理自己实现计算逻辑
+3. 使用Shader Graph提供的噪声节点
+4. 使用预生成的噪声纹理
+
+由于使用噪声算法实时计算一定会增加开销，因此一般会使用噪声纹理，以提高性能。
+
+### 噪声纹理
+
+噪声纹理是通过噪声算法生成的一种图像，其核心原理是利用噪声函数计算每个纹理坐标的值，再将这些值映射为图像的像素值。
+
+## 消融效果
+
+消融效果是模拟物体逐渐从屏幕上消失或溶解的过程，通常利用噪声纹理实现，使物体按照某种规则逐渐透明或完全不可见。
+
+### 原理
+
+通过对比噪声纹理值与消融进度参数，剔除低于阈值的像素，同时在边缘添加渐变颜色实现动态溶解的效果。
+
+### 实现
+
+```C
+Shader "Unlit/Dissolve"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _NoiseTex("Noise Texture",2D) = ""{}
+        _GradientTex("Gradient Texture", 2D) = ""{}
+        _Range("Range", Range(0,5)) = 1
+        _Progress("Progress", Range(0,1)) = 0
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
+
+        Pass
+        {
+            Cull Off
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            sampler2D _NoiseTex;
+            sampler2D _GradientTex;
+            float _Range;
+            float _Progress;
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
+                return o;
+            }
+
+            half4 frag(v2f i) : SV_Target
+            {
+                half3 mainColor = tex2D(_MainTex, i.uv);
+
+                float noise = tex2D(_NoiseTex, i.uv).x;
+                clip(_Progress != 1 ? noise - _Progress : -1);
+
+                float t = 1 - smoothstep(0.0, _Range, noise - _Progress);
+                half3 gradientColor = tex2D(_GradientTex, float2(t, 0.5));
+
+                half3 finalColor = lerp(mainColor, gradientColor, t * step(0.0001, _Progress));
+
+                return half4(finalColor, 1);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+## 水波效果
+
+水波效果是计算机图形学中模拟水面波纹的视觉效果，主要用于体现水体的动态感，比如水的波动、反射、折射、透明等。
+
+核心特点：
+
+1. 动态波纹
+2. 光学特性：反射、折射、菲涅尔效应
+3. 透明度
+
+### 原理
+
+基于带法线纹理的玻璃效果，通过添加噪声法线纹理结合时间变量实现水波动态效果，并加入菲涅尔公式计算实现水面的光学特性。
+
+> 噪声纹理的使用
+
+利用沃利噪声生成的噪声纹理，在Unity中将其作为高度图使用，表示水面的法线信息，在Unity中将噪声纹理设置为Normal map，并勾选Create From Grayscale。
+
+> 动态效果的实现
+
+定义两个属性分别表示水平面XY轴的速度，利用内置时间变量得到累积速度变化，在使用速度变量从噪声纹理中进行两次采样，结果相加得到扰动后的法线，最后再用该法线处理折射、反射、菲涅尔效果。
+
+### 实现
+
+```C
+Shader "Unlit/WaterWave"
+{
+    Properties
+    {
+        _MainTex("Main Texture", 2D) = "white" {}
+        _BumpTex("Bump Texture", 2D) = "white" {}
+        _Cubemap("Cubemap", Cube) = "" {}
+        _DistortionDegree("Distortion Degree", Range(0,100)) = 0.1
+        _WaveSpeedX("Wave Speed X", Range(-0.1,0.1)) = 0.1
+        _WaveSpeedY("Wave Speed Y", Range(-0.1,0.1)) = 0.1
+        _FresnelScale("Fresnel Scale", Range(0,1)) = 1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType"="Opaque"
+            "Queue"="Transparent"
+        }
+        GrabPass {}
+        Pass
+        {
+            Tags
+            {
+                "LightMode"="ForwardBase"
+            }
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_fwdbase
+
+            #include "UnityCG.cginc"
+            #include "AutoLight.cginc"
+            #include "Lighting.cginc"
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 worldVertex: TEXCOORD0;
+                float4 uv: TEXCOORD1;
+                float4 screenPos: TEXCOORD2;
+                half3 t2w0: TEXCOORD3;
+                half3 t2w1: TEXCOORD4;
+                half3 t2w2: TEXCOORD5;
+                SHADOW_COORDS(6)
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            sampler2D _BumpTex;
+            float4 _BumpTex_ST;
+            samplerCUBE _Cubemap;
+            sampler2D _GrabTexture;
+            fixed _DistortionDegree;
+            float _WaveSpeedX;
+            float _WaveSpeedY;
+            float _FresnelScale;
+
+            v2f vert(appdata_full v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = TRANSFORM_TEX(v.texcoord, _MainTex);
+                o.uv.zw = TRANSFORM_TEX(v.texcoord, _BumpTex);
+                o.screenPos = ComputeScreenPos(o.pos);
+                o.worldVertex = mul(unity_ObjectToWorld, v.vertex);
+
+                half3 worldNormal = normalize(UnityObjectToWorldNormal(v.normal));
+                half3 worldTangent = normalize(UnityObjectToWorldDir(v.tangent.xyz));
+                half3 worldBitangent = normalize(cross(worldNormal, worldTangent) * v.tangent.w);
+                o.t2w0 = half3(worldTangent.x, worldBitangent.x, worldNormal.x);
+                o.t2w1 = half3(worldTangent.y, worldBitangent.y, worldNormal.y);
+                o.t2w2 = half3(worldTangent.z, worldBitangent.z, worldNormal.z);
+
+                TRANSFER_SHADOW(o);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 speed = float2(_WaveSpeedX, _WaveSpeedY) * _Time.y;
+                half3 tangentNormal = UnpackNormal(tex2D(_BumpTex, i.uv.zw + speed)) +
+                    UnpackNormal(tex2D(_BumpTex, i.uv.zw - speed));
+                tangentNormal = normalize(tangentNormal);
+                half3 worldNormal = half3(dot(i.t2w0, tangentNormal), dot(i.t2w1, tangentNormal),
+                                          dot(i.t2w2, tangentNormal));
+                half3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldVertex));
+                half3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldVertex));
+                half3 halfDir = normalize(viewDir + lightDir);
+                half3 reflectionDir = reflect(-viewDir, worldNormal);
+                // 利用切线空间法线制造偏移，模拟扭曲效果
+                float2 offset = tangentNormal.xy * _DistortionDegree;
+                float2 normalizedScreenPos = (i.screenPos.xy + i.screenPos.z * offset) / i.screenPos.w;
+
+                fixed4 texel = tex2D(_MainTex, i.uv.xy + speed);
+                fixed3 grabColor = tex2D(_GrabTexture, normalizedScreenPos);
+                fixed3 diffuseColor = _LightColor0.rgb * texel.rgb * saturate(dot(worldNormal, lightDir));
+                fixed3 specularColor = _LightColor0.rgb * pow(saturate(dot(worldNormal, halfDir)), 50);
+                fixed3 reflectionColor = texCUBE(_Cubemap, reflectionDir).rgb + diffuseColor + specularColor;
+
+                float fresnel = _FresnelScale + (1 - _FresnelScale) * pow(1 - dot(viewDir, worldNormal), 5);
+                fixed3 color = reflectionColor * fresnel + grabColor * (1 - fresnel);
+
+                return fixed4(color, 1);
+            }
+            ENDCG
+        }
+    }
+    Fallback "Legacy Shaders/Reflective/Diffuse"
+}
+```
+
+## 噪声雾效
+
+噪声雾效是利用了噪声纹理实现的动态的、不规则的雾效。
+
+### 原理
+
+基于全局雾效，通过添加噪声纹理结合时间变量即可实现雾的不均匀以及动态效果。
+
+### 实现
+
+```C
+Shader "Unlit/GlobalFogWithNoise"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _FogColor("Fog Color", Color) = (1,1,1,1)
+        _FogDensity("Fog Density", Float) = 1
+        _FogStart("Fog Start", Float) = 1
+        _FogEnd("Fog End", Float) = 10
+
+        _NoiseTex("Noise Texture", 2D) = ""{}
+        _NoiseAmount("Noise Amount",Float)=1
+        _FogSpeedX("Fog Speed X", Range(-0.1,0.1))=0.05
+        _FogSpeedY("Fog Speed Y", Range(-0.1,0.1))=0.05
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+            sampler2D _CameraDepthTexture;
+            fixed4 _FogColor;
+            float _FogDensity;
+            float _FogStart;
+            float _FogEnd;
+            float4x4 _Rays;
+            sampler2D _NoiseTex;
+            float _NoiseAmount;
+            float _FogSpeedX;
+            float _FogSpeedY;
+
+            struct v2f
+            {
+                float4 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float4 ray: TEXCOORD1;
+            };
+
+            v2f vert(appdata_base v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv.xy = v.texcoord;
+                o.uv.zw = v.texcoord;
+                int index = 0;
+                if (v.texcoord.x > 0.5 && v.texcoord.y < 0.5) index = 1;
+                else if (v.texcoord.x > 0.5 && v.texcoord.y > 0.5) index = 2;
+                else if (v.texcoord.x < 0.5 && v.texcoord.y > 0.5) index = 3;
+                #if UNITY_UV_STARTS_AT_TOP
+                if (_MainTex_TexelSize.y < 0)
+                {
+                    o.uv.w = 1 - o.uv.w;
+                    index = 3 - index;
+                }
+                #endif
+                o.ray = _Rays[index];
+
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 speed = float2(_FogSpeedX, _FogSpeedY) * _Time.y;
+                float noise = (tex2D(_NoiseTex, i.uv + speed) - 0.5) * _NoiseAmount;
+
+                float depth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv.zw));
+                float3 worldPos = _WorldSpaceCameraPos + i.ray.xyz * depth;
+                float f = (_FogEnd - worldPos.y) / (_FogEnd - _FogStart);
+                f = saturate(f * _FogDensity * (1 + noise));
+                return lerp(tex2D(_MainTex, i.uv.xy), _FogColor, f);
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+# 渲染优化技术
+
+## 移动平台的特点
+
+移动平台的GPU架构相对PC平台来说有很大不同，由于处理资源等条件的限制，移动平台的GPU希望使用更小的带宽和功能。
+
+不同芯片厂商可能会在其生产的芯片上使用不同架构和技术，因此一些游戏会针对特定的芯片来进行优化。
+
+## 影响性能的因素
+
+一个游戏主要使用两种计算资源：CPU和GPU，两者相互合作来保证游戏在预期的帧率和分辨率下运行。
+
+因此可以把影响游戏性能的因素分为以下几个方面：
+
+1. CPU：过多的DrawCall，复杂的脚本或物理模拟
+2. GPU：过多的顶点（计算），过多的片元（计算）
+3. 带宽：使用了尺寸过大且未压缩的纹理，分辨率过高的帧缓存
+
+## Unity中的渲染分析工具
+
+### 渲染统计窗口
+
+在Game视图中有一个Rendering Statistics窗口，显示了当前游戏的各个渲染统计变量。
+
+| 名称                     | 描述                                                         |
+| ---------------------- | ---------------------------------------------------------- |
+| Batches                | 一帧中需要进行的批处理的数目                                             |
+| Saved by batching      | 合并的批处理数目，表示批处理为我们节省了多少DrawCall                             |
+| Tris、Verts             | 需要绘制的三角面片和顶点数目                                             |
+| Screen                 | 屏幕大小以及所占内存大小                                               |
+| SetPass                | 渲染使用的Pass的数目，每个Pass都需要Unity的runtime来绑定一个新的Shader，可能造成CPU瓶颈 |
+| Visible Skinned Meshes | 渲染的蒙皮网格数目                                                  |
+| Animations             | 播放的动画数目                                                    |
+
+### 性能分析器的渲染区域
+
+通过Window-Profiler可以打开Unity的性能分析器，其显示了大部分在渲染统计窗口中提供的信息。
+
+### 帧调试器
+
+通过Window-Frame Debugger可以打开帧调试器，来查看每一个DrawCall具体过程和结果。
+
+## 减少Draw Call数目
+
+
