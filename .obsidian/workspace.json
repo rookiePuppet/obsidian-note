@@ -4,35 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "8455652dd4ecbfd0",
+        "id": "045cee63e6d86692",
         "type": "tabs",
         "children": [
           {
-            "id": "80da8f2278b43d23",
+            "id": "903491490d5d2843",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Computer Techs/Game Development/Unity/文档笔记/渲染.md",
+                "file": "Game Design/Level Up! The Guide to Great Video Game Design.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "渲染"
-            }
-          },
-          {
-            "id": "38ba934f6e585ef7",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "00_Inbox/线性代数的本质.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "线性代数的本质"
+              "title": "Level Up! The Guide to Great Video Game Design"
             }
           }
         ]
@@ -54,7 +40,8 @@
             "state": {
               "type": "file-explorer",
               "state": {
-                "sortOrder": "alphabetical"
+                "sortOrder": "alphabetical",
+                "autoReveal": false
               },
               "icon": "lucide-folder-closed",
               "title": "文件列表"
@@ -108,10 +95,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Computer Techs/Game Development/Unity/文档笔记/渲染.md"
+                "file": "Game Design/Level Up! The Guide to Great Video Game Design.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "渲染 的大纲"
+              "title": "Level Up! The Guide to Great Video Game Design 的大纲"
             }
           },
           {
@@ -213,50 +203,50 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "80da8f2278b43d23",
+  "active": "903491490d5d2843",
   "lastOpenFiles": [
-    "00_Inbox/线性代数的本质.md",
-    "Computer Techs/Game Development/Unity/文档笔记/渲染.md",
-    "Computer Techs/Game Development/Unity/文档笔记/Unity Shader.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
-    "Art/伯克利流行音乐写作：旋律.md",
-    "Art/Song Writing.md",
-    "Computer Techs/App Development/Android Studio解决项目初始化时下载文件慢的问题.md",
-    "Computer Techs/Game Development/Unity/官方电子书笔记/Create modular game architecture in Unity with ScriptableObjects.md",
+    "00_Attachments/Pasted image 20250317225448.png",
+    "00_Attachments/Pasted image 20250317224940.png",
     "Art/像素画.md",
-    "00_Inbox/计算机网络.md",
-    "00_Inbox/利用状态模式编写灵活和模块化的代码.md",
-    "00_Inbox/内存对齐.md",
-    "00_Inbox/线性代数.md",
-    "00_Inbox/游戏素材.md",
-    "00_Inbox/游戏想法.md",
-    "Computer Techs/App Development/Android.md",
-    "Computer Techs/Game Development/Unity/官方电子书笔记/编写可扩展的更简洁的代码.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/Unity网络开发基础.md",
-    "Computer Techs/Game Development/Unity/Unity插件.md",
-    "Computer Techs/Game Development/AStar寻路算法.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/xLua.md",
+    "00_Attachments/Pasted image 20250313205213.png",
+    "00_Attachments/Pasted image 20250313205153.png",
+    "00_Attachments/Pasted image 20250313204913.png",
+    "00_Attachments/Pasted image 20250313204319.png",
+    "Game Design/Level Up! The Guide to Great Video Game Design.md",
+    "00_Inbox/Godot.md",
+    "Art/Song Writing.md",
+    "Art/伯克利流行音乐写作：旋律.md",
     "Art/编曲.md",
-    "00_Inbox/伯克利音乐学院-作曲写歌入门.md",
+    "00_Inbox/面试题/Common.md",
+    "00_Inbox/线性代数的本质.md",
+    "00_Inbox/线性代数.md",
+    "00_Inbox/伯克利流行音乐写作：和声.md",
+    "00_Inbox/面试题/Unity.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
+    "Computer Techs/Game Development/Unity/文档笔记/渲染.md",
     "Computer Techs/Game Development/Unity/书籍笔记/编辑器拓展.md",
-    "Computer Techs/Game Development/Unity/官方电子书笔记/Level up your code with Game Programming Pattern.md",
+    "Computer Techs/Game Development/AStar寻路算法.md",
+    "Computer Techs/Game Development/Unity/书籍笔记/Unity Shader入门精要.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/xLua.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Unity网络开发基础.md",
     "Computer Techs/Game Development/Unity/官方电子书笔记/性能优化.md",
+    "Computer Techs/Game Development/Unity/唐老狮教程/Addressables.md",
+    "00_Inbox/面试题/CSharp.md",
+    "Computer Techs/算法题.md",
+    "00_Inbox/面试题/Graphics.md",
+    "00_Inbox/未命名 1.md",
+    "00_Inbox/求职记录.md",
     "00_Attachments/Pasted image 20241118171404.png",
     "00_Attachments/Pasted image 20241118171350.png",
     "00_Attachments/Pasted image 20241117115224.png",
     "00_Attachments/Pasted image 20241117113052.png",
     "00_Attachments/Pasted image 20241116173035.png",
-    "00_Attachments/Pasted image 20241116172301.png",
-    "00_Attachments/Pasted image 20241111203821.png",
     "xLua背包实践",
     "Art",
-    "00_Attachments/Pasted image 20241107181149.png",
-    "00_Attachments/Pasted image 20241106165922.png",
     "Computer Techs/Game Development/Unity/唐老狮教程",
     "Computer Techs/Game Development/Unity/书籍笔记",
     "Computer Techs/Game Development/Unity/官方电子书笔记",
     "Computer Techs/Game Development/Unity/文档笔记",
-    "00_Attachments/Pasted image 20241104193916.png",
     "Game Design"
   ]
 }
