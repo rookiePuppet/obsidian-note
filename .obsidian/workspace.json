@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Game Design/Level Up! The Guide to Great Video Game Design.md",
+                "file": "00_Inbox/游戏想法.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Level Up! The Guide to Great Video Game Design"
+              "title": "游戏想法"
             }
           }
         ]
@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 315.50418853759766,
-    "collapsed": true
+    "width": 315.50418853759766
   },
   "right": {
     "id": "f2777f8a2b2fd799",
@@ -95,13 +94,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Game Design/Level Up! The Guide to Great Video Game Design.md",
+                "file": "00_Inbox/游戏想法.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Level Up! The Guide to Great Video Game Design 的大纲"
+              "title": "游戏想法 的大纲"
             }
           },
           {
@@ -188,8 +187,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 403.5,
-    "collapsed": true
+    "width": 403.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -205,6 +203,7 @@
   },
   "active": "903491490d5d2843",
   "lastOpenFiles": [
+    "Game Design/Level Up! The Guide to Great Video Game Design.md",
     "00_Attachments/Pasted image 20250317225448.png",
     "00_Attachments/Pasted image 20250317224940.png",
     "Art/像素画.md",
@@ -212,7 +211,6 @@
     "00_Attachments/Pasted image 20250313205153.png",
     "00_Attachments/Pasted image 20250313204913.png",
     "00_Attachments/Pasted image 20250313204319.png",
-    "Game Design/Level Up! The Guide to Great Video Game Design.md",
     "00_Inbox/Godot.md",
     "Art/Song Writing.md",
     "Art/伯克利流行音乐写作：旋律.md",
@@ -240,7 +238,6 @@
     "00_Attachments/Pasted image 20241118171350.png",
     "00_Attachments/Pasted image 20241117115224.png",
     "00_Attachments/Pasted image 20241117113052.png",
-    "00_Attachments/Pasted image 20241116173035.png",
     "xLua背包实践",
     "Art",
     "Computer Techs/Game Development/Unity/唐老狮教程",
