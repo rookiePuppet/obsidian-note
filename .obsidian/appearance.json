@@ -1,11 +1,12 @@
 {
-  "accentColor": "",
-  "theme": "obsidian",
-  "cssTheme": "Things",
-  "interfaceFontFamily": "HarmonyOS Sans",
-  "textFontFamily": "HarmonyOS Sans",
+  "accentColor": "#1c59ba",
+  "theme": "moonstone",
+  "cssTheme": "AnuPpuccin",
+  "interfaceFontFamily": "HarmonyOS Sans,Microsoft YaHei",
+  "textFontFamily": "HarmonyOS Sans,Microsoft YaHei",
   "monospaceFontFamily": "JetBrains Mono",
-  "baseFontSize": 19,
+  "baseFontSize": 20,
   "translucency": false,
-  "baseFontSizeAction": true
+  "baseFontSizeAction": true,
+  "nativeMenus": false
 }
