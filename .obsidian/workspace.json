@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "106f91f59d611c72",
+        "id": "87e8c35405e6db9f",
         "type": "tabs",
         "children": [
           {
-            "id": "4bee1b6631e04c51",
+            "id": "89c331ac489f63c9",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -109,8 +109,8 @@
             "state": {
               "type": "calendar",
               "state": {},
-              "icon": "lucide-file",
-              "title": "Plugin no longer active"
+              "icon": "calendar-with-checkmark",
+              "title": "Calendar"
             }
           },
           {
@@ -151,26 +151,12 @@
             }
           },
           {
-            "id": "e373c9d1425618dd",
-            "type": "leaf",
-            "state": {
-              "type": "outgoing-link",
-              "state": {
-                "file": "Computer Techs/Game Development/Shader.md",
-                "linksCollapsed": false,
-                "unlinkedCollapsed": true
-              },
-              "icon": "links-going-out",
-              "title": "Shader 的出链列表"
-            }
-          },
-          {
-            "id": "5f1b27c7b279db87",
+            "id": "caa5d285e5063ab9",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Computer Techs/Game Development/Shader.md",
+                "file": "Game Design/游戏设计艺术.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -180,7 +166,21 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Shader 的反向链接列表"
+              "title": "游戏设计艺术 的反向链接列表"
+            }
+          },
+          {
+            "id": "e72d265a8ce011cb",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Game Design/游戏设计艺术.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "游戏设计艺术 的出链列表"
             }
           }
         ]
@@ -201,8 +201,20 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "4bee1b6631e04c51",
+  "active": "89c331ac489f63c9",
   "lastOpenFiles": [
+    "Game Design/游戏原型设计.md",
+    "Game Design/游戏设计文件GDD.md",
+    "00_Inbox/线性代数的本质.md",
+    "00_Inbox/游戏素材.md",
+    "00_Inbox/线性代数.md",
+    "00_Inbox/深入解析CSharp.md",
+    "00_Inbox/内存对齐.md",
+    "00_Inbox/计算机网络.md",
+    "00_Inbox/利用状态模式编写灵活和模块化的代码.md",
+    "00_Inbox/对象和类.md",
+    "00_Inbox/操作系统.md",
+    "Art/伯克利流行音乐写作：和声.md",
     "Game Design/游戏设计艺术.md",
     "00_Inbox/游戏想法.md",
     "Computer Techs/设计模式.md",
@@ -223,22 +235,10 @@
     "Art/伯克利流行音乐写作：旋律.md",
     "Art/编曲.md",
     "00_Inbox/面试题/Common.md",
-    "00_Inbox/线性代数的本质.md",
-    "00_Inbox/线性代数.md",
-    "00_Inbox/伯克利流行音乐写作：和声.md",
     "00_Inbox/面试题/Unity.md",
     "Computer Techs/Game Development/Unity/唐老狮教程/Shader.md",
     "Computer Techs/Game Development/Unity/文档笔记/渲染.md",
     "Computer Techs/Game Development/Unity/书籍笔记/编辑器拓展.md",
-    "Computer Techs/Game Development/AStar寻路算法.md",
-    "Computer Techs/Game Development/Unity/书籍笔记/Unity Shader入门精要.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/xLua.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/Unity网络开发基础.md",
-    "Computer Techs/Game Development/Unity/官方电子书笔记/性能优化.md",
-    "Computer Techs/Game Development/Unity/唐老狮教程/Addressables.md",
-    "00_Inbox/面试题/CSharp.md",
-    "Computer Techs/算法题.md",
-    "00_Inbox/面试题/Graphics.md",
     "xLua背包实践",
     "Art",
     "Computer Techs/Game Development/Unity/唐老狮教程",
