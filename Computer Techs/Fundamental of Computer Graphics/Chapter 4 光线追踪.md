@@ -85,6 +85,9 @@ $$
 &ray.origin\leftarrow \mathbf{e}+u\mathbf{u}+v\mathbf{v}
 \end{align}
 $$
+
+斜平行视图只需要独立指定图像平面法线$w$和观察方向$w$即可，用$d$替代$-w$。
+
 > [!NOTE]
 > 同时指定$l$和$r$是冗余的，因为将视点向右移动一点或者对应地减小$l$和$r$都不会改变视图，在$v$轴上也是同样的。
 
@@ -104,11 +107,236 @@ $$
 \end{align}
 $$
 
+斜透视视图可以通过独立指定图像平面法线和投影方向实现，将$-d\mathbf{w}$替换为$d\mathbf{d}$。
 
+## 射线-物体求交
 
+在生成了一条射线$\mathbf{e}+t\mathbf{d}$之后，下一步就是找到当$t>0$时和物体的第一个交点。在实践中，这对于解决一个更普遍的问题也十分有用，即找到射线（$t$位于$[t_0,t_1]$区间）和某个表面之间的第一个交点，在基础的射线相交情况中$t_0=0,\ t_1=+\infty$。
 
+### 射线-球体求交
 
+给定射线$\mathbf{p}(t)=\mathbf{e}+t\mathbf{d}$和隐式表面$f(\mathbf{p})=0$，那么两者的交点就会出现在当射线上的点满足隐式表面方程时，对应的$t$值通过解出$f(\mathbf{p}(t))=0$得到。
 
+一个中心为$\mathbf{c}=(x_c,y_c,z_c)$，半径为$R$的球体可以用如下隐式方程表示：
 
+$$
+(x-x_c)^2+(y-y_c)^2+(z-z_c)^2-R^2=0
+$$
+
+或者以向量形式表示：
+
+$$
+(\mathbf{p}-\mathbf{c})\cdot(\mathbf{p}-\mathbf{c})-R^2=0
+$$
+
+将射线代入方程：
+
+$$
+\begin{align}
+&(\mathbf{e}+t\mathbf{d}-\mathbf{c})\cdot(\mathbf{e}+t\mathbf{d}-\mathbf{c})-R^2=0 \\
+\rightrightarrows
+&(\mathbf{d}\cdot\mathbf{d})t^2+2\mathbf{d}\cdot(\mathbf{e}-\mathbf{c})t+(\mathbf{e}-\mathbf{c})\cdot(\mathbf{e}-\mathbf{c})-R^2=0.
+\end{align}
+$$
+
+未知数只有$t$，所以它是一个形式为$At^2+Bt+C=0$的二次方程。$B^2-4AC$被称为二次方程的判别式，判别式能告诉我们方程有多少个实数解。当判别式为负时，其平方根为虚数，直线和球体不相交；当判别式为正时，直线和球体有两个交点，对应进入和离开球体时的交点；当判别式为零时，直线刚好擦过球体，只有一个交点。
+
+在实际实现时，应该在计算解之前先检查判别式的值。如果球体仅用于复杂物体的边界物体，那么我们只需要检查判别式以判断射线是否击中它即可。
+
+### 射线-三角形求交
+
+计算射线-三角形交点的算法有很多，接下来将介绍使用重心坐标作为包含三角形的参数平面的形式，因为它不需要除三角形顶点之外的长期存储。
+
+为了计算射线和参数化表面的交点，我们建立如下方程组：
+
+$$
+\left.
+\begin{align}
+&x_e+tx_d=f(u,v)\\
+&y_e+ty_d=g(u,v)\\
+&z_e+tz_d=h(u,v)\\
+\end{align}
+\right\}
+\quad or, \quad
+\mathbf{e}+t\mathbf{d}=\mathbf{f}(u,v)
+$$
+
+当参数化表面为参数化平面时，参数化方程可以写成向量形式。如果三角形为$a$，$b$和$c$，那么交点就会出现于：
+
+$$
+\mathbf{e}+t\mathbf{d}=\mathbf{a}+\beta(\mathbf{b}-\mathbf{a})+\gamma(\mathbf{c}-\mathbf{a})
+$$
+
+仅当$\beta>0,\ \gamma>0,\ 且\beta+\gamma<1$时，交点位于三角形内部。如果误解，要么是三角形退化（无效的三角形，例如三点共线、存在大于180°的角），要么是射线平行于三角形所在平面。
+
+上面的方程可以写成矩阵形式，应用克拉默法则即可求出方程组的解。
+
+$$
+\left[\begin{matrix}
+a-b & a-c & d
+\end{matrix}\right]
+\left[\begin{matrix}
+\beta \\ \gamma \\ t
+\end{matrix}\right]=
+\left[\begin{matrix}
+a-e
+\end{matrix}\right]
+$$
+
+射线-三角形求交算法中求解线性方程组时有一些提前终止的条件，所以它长这样：
+
+$$
+\begin{align}
+&boolean\ raytri(ray\ r, vector3\ a, vector3\ b, vector3\ c,\\
+&\quad\quad\quad\quad  interval\ [t0,t1]) \\
+&compute\ t \\
+&if\ t<t_0\ or\ t>t_1 \\
+&\quad return\ false \\
+&compute\ \gamma \\
+&if\ \gamma<0\ or\ \gamma>1 \\
+&\quad return\ false \\
+&compute\ \beta \\
+&if\ \beta<0\ or\ \beta>1-\gamma \\
+&\quad return\ false \\
+\end{align}
+$$
+
+### 射线-多边形求交
+
+给定一个有m个顶点（从$p_1$到$p_m$），表面法线为$n$的多边形，可以用隐式方程首先计算出射线和多边形所在平面的交点：
+
+$$
+(p-p_1)\cdot n=0
+$$
+
+将$p=e+td$代入可得：
+
+$$
+t=\frac{(p_1-e)\cdot n}{d\cdot n}
+$$
+
+若点$p$在多边形中，那么说明射线命中。我们可以通过将点和多边形顶点投影到$xy$平面来确定$p$是否在多边形中，最简单的方式就是从$p$发射任意2D射线，然后对射线和多边形边界之间的交点计数。如果交点数量为奇数，说明点在多边形内部，否则不在。这是因为射线有进必有出，从而产生一对交点，仅当射线从内部出发时只会产生一个交点。为使计算简单，这条2D射线可以沿着$x$轴传播：
+
+$$
+\left[\begin{matrix}x\\ y\end{matrix}\right]=
+\left[\begin{matrix}x_p\\ y_p\end{matrix}\right]+
+s\left[\begin{matrix}1\\ 0\end{matrix}\right]
+$$
+
+然而多边形投影到$xy$平面上有可能是一条直线，所以我们因此从$xy$，$yz$和$xz$中选择最合适的一个。如果实现一个对点的索引操作，例如$p(0)=x_p$，可通过如下逻辑完成：
+
+$$
+\begin{align}
+&if\ abs(z_n)>abs(x_n)\ and\ abs(z_n)>abs(y_n)\ then\\
+&\quad\quad index0=0\\
+&\quad\quad index1=1\\
+&else\ if\ abs(y_n)>abs(x_n)\ then\\
+&\quad\quad index0=0\\
+&\quad\quad index1=2\\
+&else\\
+&\quad\quad index0=1\\
+&\quad\quad index1=2
+\end{align}
+$$
+
+另一种在实践中常用的方法是，用多个三角形替代多边形。
+
+### 一组物体求交
+
+当然，多数求交场景由多个物体组成，而我们只需要求出射线和场景与距离摄像机最近的交点。一种简单的方式是将一组物体视为另一种类型的物体。
+
+$$
+\begin{align}
+&hit=false\\
+&for\ each\ obejct\ o\ in\ the\ group\ do\\
+&\quad if\ o\ is\ hit\ at\ ray\ parameter\ t\ and\ t\in[t_0,t_1]\ then\\
+&\quad\quad hit=true\\
+&\quad\quad hitobejct=o\\
+&\quad\quad t_1=t\\
+&return\ hit
+\end{align}
+$$
+
+## 着色
+
+当已知像素的可见表面，就可以通过**着色模型**来计算其像素值。
+
+大多数的着色模型是设计用于捕获光的反射过程——表面被光源照亮并向摄像机反射部分光。简单的着色模型定义用于点光源照明。
+
+在光的反射中最重要的变量有：
+
+- 光线方向$l$：一个指向光源的单位向量
+- 观察方向$v$：一个指向眼睛或摄像机的单位向量
+- 表面法线$n$：一个在反射位置垂直于表面的单位向量
+- 其他表面性质：颜色，光泽度，以及特定模型依赖的属性
+
+### Lambert着色
+
+兰伯特在十八世纪发现：从光源落在表面一块区域的能量大小取决于表面与光线之间的夹角，即亮度与表面法线和光源之间夹角$\theta$的余弦值成正比。
+
+![[Pasted image 20250613175313.png]]
+
+于是有了兰伯特着色模型：
+
+$$
+L=k_d I max(0,\mathbf{n}\cdot\mathbf{l})
+$$
+
+其中$L$为像素颜色，$k_d$为**漫反射系数**（表面颜色），$I$为光源强度。由于$n$和$l$都是单位向量，所以$n\cdot l$其实就是$\cos\theta$。
+
+### Blinn-Phong着色
+
+Lambert着色是**视角无关的**，即表面颜色不依赖于观察方向。
+
+然而许多现实的表面会显示出光泽度，产生高光或高光反射，并随着视点的改变而移动。由于Lambert着色并不产生任何高光，造成了不光滑的外表，所以一些着色模型会在Lambert着色（**漫反射部分**）的基础上添加**高光部分**。
+
+一个非常简单且广泛使用的高光模型最早由Phong提出，后被Blinn改进成如今最普遍应用的形式。其思想是使在$v$和$l$关于表面法线对称时产生最亮的反射，即镜面反射，而当两个向量逐渐偏离这种镜面对称时，反射减弱。
+
+![[Pasted image 20250613175408.png]]
+
+我们可以通过比较半程向量$h$（位于$v$和$l$之间二等分角）和表面法线来知道当前有多接近镜面对称状态。若半程向量接近表面法线，高光部分应该是明亮的，否则是暗淡的。该结果通过计算$h$和$n$的点乘得到，然后对其做$p>1$的幂运算来使它增长得更快，调整幂的大小可以控制表面光泽。
+
+> [!NOTE]
+> $p$的典型值：
+> 10—“蛋壳”
+> 100—轻微发亮
+> 1000—极其光滑
+> 10000—接近镜面
+
+于是得到了Blinn-Phong着色模型：
+
+$$
+\begin{align}
+&\mathbf{h}=\frac{\mathbf{v}+\mathbf{l}}{\vert \mathbf{v}+\mathbf{l}\vert},\\
+&L=k_d I{max(0,\mathbf{n}\cdot\mathbf{l})+k_sImax(0,\mathbf{n}\cdot\mathbf{h}})^p
+\end{align}
+$$
+
+其中$k_s$为镜面系数或表面的镜面颜色。
+
+### 环境光着色
+
+一点光照都没有接收到的表面会被渲染成完全的黑色，这一般是我们不期望的。避免黑色阴影的一个粗暴但有用的方法是对着色模型添加一个常数部分，称之为环境光着色。
+
+> [!NOTE]
+> 在现实世界中，不被光源照明的表面也会间接地被来自其他表面的反射光所照亮。
+
+为方便起见，环境光着色通常表示为表面颜色和环境光颜色的乘积，因此环境光着色能够被所有表面共同或单独调节。
+
+将环境光着色和Blinn-Phong模型组合在一起就得到了一个完整的且简单实用的着色模型：
+
+$$
+L=k_aI_a+k_d I{max(0,\mathbf{n}\cdot\mathbf{l})+k_sImax(0,\mathbf{n}\cdot\mathbf{h}})^p
+$$
+
+其中$k_a$为表面的环境光系数（环境光颜色），$I_a$为环境光强度。
+
+### 多个点光源
+
+光是可叠加的，即多个光源产生的效果就是每个光源各自产生的效果的总和。因此，一个着色模型可以被简单地扩展来处理N个光源：
+
+$$
+L=k_aI_a+\sum_{i=0}^N[k_dI_i{max(0,\mathbf{n}\cdot\mathbf{l}_i)+k_sI_imax(0,\mathbf{n}\cdot\mathbf{h}_i})^p]
+$$
 
 
