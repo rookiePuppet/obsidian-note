@@ -181,7 +181,91 @@ $$
 x'=\frac{ax+by+cz+d}{ex+fy+gz+h}
 $$
 
-它被称为一个$x,y,z$的线性有理函数。而且还有一个额外的约束，被变换点的所有坐标的分母都是相同的。
+它被称为一个$x,y,z$的**线性有理函数**。而且还有一个额外的约束，被变换点的所有坐标的分母都是相同的。
+
+表示为如下矩阵变换：
+
+$$
+\left[\begin{matrix}\hat{x}\\\hat{y}\\\hat{z}\\\hat{w}\end{matrix}\right]=
+\left[\begin{matrix}
+a_1 & b_1 & c_1 & d_1 \\
+a_2 & b_2 & c_2 & d_2 \\
+a_3 & b_3 & c_3 & d_3 \\
+e & f & g & h
+\end{matrix}\right]
+\left[\begin{matrix}x\\y\\z\\1\end{matrix}\right]
+$$
+$$
+(x',y',z')=(\hat{x}/\hat{w},\hat{y}/\hat{w},\hat{z}/\hat{w})
+$$
+
+这样的变换称为**投影变换**或**单应性矩阵**。
+
+> Example
+
+矩阵M表示一个将单位正方形转换为一个四边形的2D投影变换。
+
+$$
+M=\left[\begin{matrix}
+2 & 0 & -1 \\
+0 & 3 & 0 \\
+0 & \frac{2}{3} & \frac{1}{3}
+\end{matrix}\right]
+$$
+
+![[Pasted image 20250620171803.png]]
+
+一个3D投影变换就是一个4D线性变换，任意系数乘以一个向量都指向同一个点：
+
+$$
+x\sim\alpha x\quad (\alpha\ne 0)
+$$
+
+## 透视投影
+
+我们可以通过如下矩阵变换实现透视投影：
+
+$$
+\left[\begin{matrix}y_s&1\end{matrix}\right]\sim
+\left[\begin{matrix}
+d & 0 & 0 \\
+0 & 1 & 0
+\end{matrix}\right]
+\left[\begin{matrix}y\\z\\1\end{matrix}\right]
+$$
+
+它将二维齐次向量$[y\ z\ 1]^T$变换为表示一维点$(dy/z)$的一维齐次向量$[dy\ z]^T$。
+
+因为在3D透视投影中，摄像机一般朝向$-z$轴，所以点$(x,y,z)$的距离为$-z$。正如正交投影那样，使用远近平面来限制可视距离，将近平面作为投影平面，那么成像平面的距离就是$-n$。
+
+期望的映射关系应该是$y_s=(n/z)y$，对于x也是同样的，该变换可利用**透视矩阵**实现：
+
+$$
+P=\left[\begin{matrix}
+n & 0 & 0 & 0 \\
+0 & n & 0 & 0 \\
+0 & 0 & n+f & -fn \\
+0 & 0 & 1 & 0
+\end{matrix}\right]
+$$
+
+对一个点$(x,y,z)$应用该矩阵的效果：
+
+$$
+P\left[\begin{matrix}x\\y\\z\\1\end{matrix}\right]=
+\left[\begin{matrix}nx\\ny\\(n+f)z-fn\\z\end{matrix}\right]
+\left[\begin{matrix}\frac{nx}z\\\frac{ny}z\\(n+f)-\frac{fn}z\\1\end{matrix}\right]
+$$
+
+
+
+
+
+
+
+
+
+
 
 
 
