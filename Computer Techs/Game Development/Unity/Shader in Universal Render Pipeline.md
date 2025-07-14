@@ -90,3 +90,136 @@ Shader "Custom/UnlitShaderExample" {
 	FallBack "Path/Name"
 }
 ```
+
+## Queue
+
+Queue标签用于确定物体渲染的时机，必须设置成下面这些预定义的名称（分别对应一个渲染队列值）：
+
+- Background - 1000
+- Geometry - 2000
+- AlphaTest - 2450
+- Transparent - 3000
+- Overlay - 4000
+
+也可使用“+n"或“-n”的形式，例如“Geometry+1”即2001。
+
+队列值在2500以下的物体为不透明物体，相同队列值的物体是从前往后渲染的。
+
+2500以上队列值的物体为透明物体，从后往前渲染。
+
+## Pass
+
+Pass块定义在每一个SubShader块中，每个Pass块都会包含一个叫做**LightMode**的特殊标签，其决定何时以及如何使用该Pass。
+
+可以用**Name**为Pass命名，之后在其他的Shader中就可以通过**UsePass**来使用该Pass。如果Pass中使用了CBUFFER，则不建议在其他Shader中使用UsePass来调用该Pass。这是为了保持SRP Batcher的兼容性，Shader中所有的Pass必须共用相同的**UnityPerMaterial CBUFFER**，而UsePass可能会破坏这个规则。
+
+当Shader只需要一个单独的Pass时，可以完全省略LightMode标签，例如一个实现全屏效果的Blit Render Feature所使用的Shader。
+
+## LightMode
+
+URP所使用的LightMode如下：
+
+- UniversalForward：用于在前向（Forward）渲染路径中渲染物体
+- ShadowCaster：用于投射阴影
+- DepthOnly：被Depth Prepass用于创建深度纹理，当启用MSAA或平台不支持拷贝深度缓冲时
+- DepthNormals：被Depth Normals Prepass用于创建深度纹理和法线纹理，需要在渲染器中通过`ConfigureInput(ScriptableRenderPassInput.Normal)`开启
+- Meta：在烘焙光照贴图时使用
+- Universal2D：用于在2D渲染器启用时渲染物体
+- SRPDefaultUnlit：当未指定任何LightMode时所使用的默认值，可用于渲染额外通道，但可能会破坏SRP Batcher的兼容性
+
+为内置渲染管线设计的LightMode不受URP支持，如Always、ForwardAdd、PrepassBase等。
+
+## Cull
+
+Cull指令用于控制三角形面的剔除。
+
+- Off：不剔除，两面都渲染
+- Back：剔除背面，默认值
+- Front：剔除正面
+
+```c
+Pass
+{
+	Cull Off
+	...
+}
+```
+
+## Depth Test/Write
+
+ZTest指令用于控制深度测试时决定片元渲染的深度值比较方式，例如默认值LEqual，仅当片元深度值小于或等于缓冲区值时渲染片元。
+
+ZWrite指令用于控制当片元通过深度测试时是否将其深度值写入缓冲区。
+
+Offset指令用于偏移深度值。
+
+```cs
+Pass {
+	ZTest LEqual	// Default
+	// ZTest Less | Greater | GEqual | Equal | NotEqual | Always
+	
+	ZWrite On		// Default
+	// ZWrite Off
+	...
+	
+	Offset 0, -1
+}
+```
+
+## Blend & Transparency
+
+Blend指令和BlendOp指令用于控制源颜色（着色器计算出的颜色）和目标颜色（缓冲区中的颜色）如何进行混合。
+
+Blend指令可指定对源颜色和目标颜色所使用的混合因子，BlendOp指令用于指定使用混合因子对源颜色和目标颜色进行混合的计算模式。
+
+可选的计算因子有：One、Zero、SrcColor、SrcAlpha、DstColor、DstAlpha、OneMinusSrcColor.....
+
+常用的混合因子组合如下：
+
+- SrcAlpha OneMinusSrcAlpha - 传统透明
+- One OneMinusSrcAlpha - 预乘透明
+- One One - 叠加
+- OneMinusDstColor One - 柔和叠加
+- DstColor Zero - 正片叠底
+- DstColor SrcColor - 2倍正片叠底
+
+## Multi-Pass
+
+LightMode设置为SRPDefaultUnlit的通道会破坏SRP Batcher的兼容性，因此不推荐使用。
+
+实现多通道的推荐方式如下：
+
+- 将额外的Pass写到新的Shader中，再将多个材质应用到网格渲染器上。
+- 前向渲染器中的RenderObjects特性可以使用一个覆盖材质在特定的层级对物体再次渲染，但是覆盖材质不会保留上一个Shader的属性和纹理。
+- 使用一个自定义的LightMode标签，在RenderObjects特性上使用Shader Tag ID设定。
+
+# HLSL
+
+在每一个Pass中使用`HLSLPROGRAM`和`ENDHLSL`来定义HLSL的代码块，HLSL代码块中必须包含一个顶点着色器和一个片元着色器，使用`#pragma vertex/fragment`来指定顶点和片元着色器对应的函数。
+
+在内置渲染管线中通常使用vert和frag作为顶点片元着色器函数的名称，但是在URP中会使用更具体的名称如“UnlitPassVertex”和“UnlitPassFragment”。
+
+在SubShader块中可以使用`HLSLINCLUDE`来包含一些在每个Pass中共享的代码，这里面的代码也可以单独放在另一个文件中。
+
+```c
+SubShader {
+	Tags { "RenderPipeline"="UniversalPipeline" "Queue"="Geometry" }
+	
+	HLSLINCLUDE
+	...
+	ENDHLSL
+
+	Pass {
+		Name "Forward"
+		// LightMode tag. Using default here as the shader is Unlit
+		// Cull, ZWrite, ZTest, Blend, etc
+
+		HLSLPROGRAM
+		#pragma vertex UnlitPassVertex
+		#pragma fragment UnlitPassFragment
+		...
+		ENDHLSL
+	}
+}
+```
+
