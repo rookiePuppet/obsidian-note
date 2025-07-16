@@ -496,7 +496,7 @@ x_p \\ y_p \\ 1
 \end{bmatrix}
 \begin{bmatrix}
 x_u & x_v & 0 \\
-x_v & y_v & 0 \\
+y_u & y_v & 0 \\
 0 & 0 & 1
 \end{bmatrix}
 \begin{bmatrix}
@@ -535,7 +535,7 @@ u_p \\ v_p \\ 1
 =
 \begin{bmatrix}
 x_u & y_u & 0 \\
-x_v & y_v & 0 \\
+x_u & y_v & 0 \\
 0 & 0 & 1
 \end{bmatrix}
 \begin{bmatrix}

@@ -382,4 +382,426 @@ void ArrayExample_float(out float Out){
 
 声明其他类型的数组在技术上也是可行的，但是只有float向量和float标量的数组可以通过C#脚本来设置。
 
-建议使用全局的Set方法，如`Shader.SetGlobalVectorArray`，原因是数组不能被正确地包含到UnityPerMaterial CBUFFER中
+建议使用全局的Set方法，如`Shader.SetGlobalVectorArray`，原因是数组不能被正确地包含到UnityPerMaterial CBUFFER中。
+
+## Buffer
+
+可用Compute Buffer替代数组，对应HLSL中的结构化缓冲区。
+
+至少需要`#pragma target 4.5`才能使用结构化缓冲区，而且并非所有平台都支持。可以在C#中使用`SystemInfo.supportsComputeShaders`来查看当前平台是否支持。
+
+```c
+struct Example {
+	float3 A;
+	float B;
+};
+
+StructuredBuffer<Example> _BufferExample;
+
+void GetBufferValue(float Index, out float3 Out) {
+	Out = _BufferExample[Index].A;
+}
+```
+
+```csharp
+using UnityEngine;
+
+[ExecuteAlways]
+public class BufferTest : MonoBehaviour {
+
+    private ComputeBuffer buffer;
+
+    private struct Test {
+        public Vector3 A;
+        public float B;
+    }
+    
+    private void OnEnable() {
+        Test test = new Test {
+            A = new Vector3(0, 0.5f, 0.5f),
+            B = 0.1f,
+        };
+        Test test2 = new Test {
+            A = new Vector3(0.5f, 0.5f, 0),
+            B = 0.1f,
+        };
+		
+        Test[] data = new Test[] { test, test2 };
+		
+        buffer = new ComputeBuffer(data.Length, sizeof(float) * 4);
+        buffer.SetData(data);
+		
+        GetComponent<MeshRenderer>().sharedMaterial.SetBuffer("_BufferExample", buffer);
+    }
+
+    private void OnDisable() {
+        buffer.Dispose();
+    }
+}
+```
+
+## 函数
+
+在HLSL中定义函数的方法与在C#中基本一致，只是需要注意在使用函数之前必须有函数的定义，因此函数和`#include`文件代码的书写顺序非常重要。
+
+可以对函数参数使用输入修饰符：
+
+- in：仅输入/只读，在函数中无法对参数值修改，未指定修饰符时的默认行为
+- out：仅输出/只写，初始值被忽略，必须在函数内部对参数赋值
+- inout：可读可写，可获得初始值，修改结果也会传递到外部
+- uniform：只读的常量数据
+
+在函数返回类型前可使用`inline`修饰符，编译器会在调用该函数的地方会将函数内部的代码直接拷贝过去，以降低函数调用开销。
+
+还可以使用宏定义的函数，例如：
+
+```c
+#define EXAMPLE(x, y) ((x) * (y))
+```
+
+在编译之前，使用该宏定义的地方会被替换成实际的代码（纯文本替换）。
+
+```c
+float f = EXAMPLE(3, 5);
+float3 a = float3(1,1,1);
+float3 f2 = EXAMPLE(a, float3(0,1,0));
+ 
+// just before compiling this becomes :
+float f = ((3) * (5));
+float a = float(1,1,1);
+float3 f2 = ((a) * (float3(0,1,0)));
+ 
+// An important note, is that the macro has () around x and y.
+// This is because we could do :
+float b = EXAMPLE(1+2, 3+4);
+// which becomes :
+float b = ((1+2) * (3+4)); // 3 * 7, so 21
+// If those () wasn't included, it would instead be :
+float b = (1+2*3+4)
+// which equals 11 due to * taking precedence over +
+```
+
+```c
+#define TRANSFORM_TEX(tex,name) (tex.xy * name##_ST.xy + name##_ST.zw)
+ 
+// Usage :
+OUT.uv = TRANSFORM_TEX(IN.uv, _MainTex)
+ 
+// which becomes :
+OUT.uv = (IN.uv.xy * _MainTex_ST.xy + _MainTex_ST.zw);
+```
+
+## UnityPerMaterial CBUFFER
+
+在`HLSLINCLUDE`块中定义`UnityPerMaterial CBUFFER`可以确保所有通道共享一个CBUFFER，以兼容SRP Batcher。
+
+CBUFFER中必须包含所有暴露的属性（在ShaderLab的Properties块中定义的），纹理除外。
+
+```c
+HLSLINCLUDE
+	// Core.hlsl相当于内置管线中的UnityCG.cginc
+    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+	
+    CBUFFER_START(UnityPerMaterial)
+    float4 _ExampleTexture_ST; // Tiling & Offset, x = TilingX, y = TilingY, z = OffsetX, w = OffsetY
+	float4 _ExampleTexture_TexelSize; // x = 1/width, y = 1/height, z = width, w = height.
+    float4 _ExampleColor;
+	float _ExampleRange;
+	float _ExampleFloat;
+    float4 _ExampleVector;
+	// etc.
+    CBUFFER_END
+ENDHLSL
+```
+
+对于未暴露的变量，必须使用`Shader.SetGlobalX`系列方法来设置它们的值，如果不想每个材质共用同一个值，则将其暴露出来并放进CBUFFER。
+
+## 结构体
+
+在定义顶点和片元着色器函数之前，需要定义用于在它们之间传递数据的结构体。
+
+在内置管线中通常会创建两个名为`appdata`和`v2f`的结构体，而通用管线中一般使用`Attributes`和`Varyings`命名。
+
+[语义](https://learn.microsoft.com/en-gb/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics)是一种关联在Shader的输入输出上的字符串，用于传达关于参数使用意图的信息。
+
+### Attributes
+
+```cs
+struct Attributes {
+    float4 positionOS   : POSITION;
+    float2 uv           : TEXCOORD0;
+    float4 color        : COLOR;
+};
+```
+
+Attributes结构体作为顶点着色器的输入，在这里可以获得网格的逐顶点数据。
+
+顶点输入数据常用语义：
+
+- POSITION：顶点坐标
+- COLOR：顶点颜色
+- TEXCOORD0-7：纹理坐标
+- NORMAL：顶点法线
+- TANGENT：顶点切线
+
+### Varyings
+
+```cs
+struct Varyings {
+    float4 positionCS   : SV_POSITION;
+    float2 uv           : TEXCOORD0;
+    float4 color        : COLOR;
+};
+```
+
+Varyings结构体作为顶点着色器的输出和片元着色器的输入，在这里会使用`SV_POSITION`替代`POSITION`，存储来自顶点着色器输出的裁剪空间坐标。
+
+`COLOR`和`TEXCOORDn`也可以在这里使用，但是不再和网格顶点颜色/uv对应了，而是三角形之间插值得到的数据。
+
+### FragmentOutput
+
+一般情况下，片元着色器只需要输出一个颜色值，使用一个输出语义`SV_Target`，用于将片元颜色写入当前的渲染目标。
+
+```c
+half4 UnlitPassFragment(Varyings input) : SV_Target {
+	// ... // calculate color
+	return color;
+}
+```
+
+着色器是可以在多个渲染目标上产生输出的，这称为多渲染目标（Multi Render Target）。
+
+在非延迟渲染路径中使用MRT需要在C#端进行额外设置，如`Graphics.SetRenderTarget`或`CommandBuffer.SetRenderTarget`，
+
+在着色器中定义MRT输出：
+
+```c
+struct FragOut {
+	half4 color : SV_Target0; 	// aka SV_Target
+	half4 color2 : SV_Target1; 	// another render target
+};
+
+FragOut UnlitPassFragment(Varyings input) {
+	// ... // calculate color and color2
+	FragOut output;
+	output.color = color;
+	output.color2 = color2;
+	return output;
+}
+```
+
+## 顶点着色器
+
+顶点着色器的核心任务是将网格上的顶点位置从模型空间变换到裁剪空间，URP中使用的函数为`TransformObjectToHClip`，也可以使用下面这种更便捷的方式。
+
+```c
+Varyings UnlitPassVertex(Attributes IN) {
+    Varyings OUT;
+	// alternatively, Varyings OUT = (Varyings)0;
+	// to initalise all struct inputs to 0.
+	// otherwise, every variable in the struct must be set
+ 
+	//OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
+	// Or :
+    VertexPositionInputs positionInputs = GetVertexPositionInputs(IN.positionOS.xyz);
+    OUT.positionCS = positionInputs.positionCS;
+    // which also contains .positionWS, .positionVS and .positionNDC (aka screen position)
+	
+	// Pass through UV/TEXCOORD0 with texture tiling and offset (_BaseMap_ST) applied :
+    OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
+	
+	// Pass through Vertex Colours :
+    OUT.color = IN.color;
+    return OUT;
+}
+```
+
+`GetVertexPositionInputs`函数输入模型空间下的顶点坐标，得到常用空间下的顶点坐标：
+
+- positionWS：世界空间
+- positionVS：观察空间
+- positionCS：裁剪空间
+- positionNDC：标准设备坐标空间，也叫屏幕空间。左下角为(0,0)，右上角为(w,w)，经过透视除法（`positionNDC.xy/positionNDC.w`）后右上角坐标变为(1,1)
+
+没有被使用的坐标不会包含到编译后的着色器中，因此不会造成不必要的计算。
+
+顶点着色器负责向片元着色器传递数据，例如纹理坐标和顶点颜色，这些数据会在三角形之间进行插值。
+
+对于UV，可以只是`OUT.uv=IN.uv`这样简单赋值传递，但通常会对UV应用平铺和偏移，Unity会把这两个值传入一个名为`纹理名_ST`的变量中，然后我们可以这样计算：
+
+```c
+// 可以使用TRANSFORM_TEX替代
+OUT.uv = IN.uv * _BaseMap_ST.xy + _BaseMap_ST.zw;
+```
+
+`GetVertexNormalInputs`函数用于获得世界空间下的法线、切线和副切线。
+
+```c
+VertexNormalInputs normalInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
+OUT.normalWS = normalInputs.normalWS;
+OUT.tangentWS = normalInputs.tangentWS;
+OUT.bitangentWS = normalInputs.bitangentWS;
+```
+
+## 片元着色器
+
+片元着色器负责确定像素的颜色输出，例如一个无光照着色器：
+
+```c
+half4 UnlitPassFragment(Varyings IN) : SV_Target {
+	// Sample BaseMap Texture :
+    half4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
+	
+	// Tint texture result with Color property and vertex colours :
+    return baseMap * _BaseColor * IN.color;
+}
+```
+
+`SAMPLE_TEXTURE2D`是ShaderLibrary提供的一个宏，用于对纹理在指定uv坐标下进行采样。
+
+还可以做的是当alpha值低于某个阈值时丢弃片元，通常称为Alpha剔除/剪切。
+
+```cs
+if (_BaseMap.a < _Cutoff){
+    discard;
+}
+// OR
+clip(_BaseMap.a - _Cutoff);
+// inside the fragment function, before returning
+```
+
+## 关键字&着色器变体
+
+在Shader中可以指定一些像`#pragma multi_compile`和`#pragma shader_feature`这样的指令，用于指定关键字来对特定的Shader代码进行“开关”。Shader在被编译之后会生成多个版本，称为着色器变体。
+
+这可以让我们只需要编写一个Shader，就能创建出多个不同版本的Shader（禁用了某些功能）以节约性能，需要注意不同的变体无法合批。
+
+### Multi Compile
+
+```c
+#pragma multi_compile _A _B _C (...etc)
+```
+
+这样可以产生三种变体，`_A`，`_B`都是定义好的关键字。可以使用`#if defined(KEYWORD) / #ifdef KEYWORD`来确定代码是否受关键字控制启用和禁用，例如：
+
+```c
+#ifdef _A
+// Compile this code if A is enabled
+#endif
+ 
+#ifndef _B
+// Compile this code if B is disabled, aka only in A and C.
+// Note the extra "n" in the #ifndef, for "if not defined"
+#else
+// Compile this code if B is enabled
+#endif
+ 
+#if defined(_A) || defined(_C)
+// Compile this code in A or C. (aka the same as the above, assuming there's no other keywords)
+// We have to use the long-form "#if defined()" if we want multiple conditions,
+// where || is "or", && is "and", and ! for "not", similar to C#.
+// Note however, that since the keywords are defined in one multi_compile statement
+// it's actually impossible for both to be enabled, so && wouldn't make sense here.
+#endif
+ 
+/* There's also #elif, for an "else if" statement */
+```
+
+URP使用了非常多`multi_compiles`，下面是一些常用的，ShaderLibrary中的一些函数依赖于这些关键字。
+
+```c
+// Additional Lights (e.g. Point, Spotlights)
+#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+
+// Shadows
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+// Note, v11 changes this to :
+// #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
+#pragma multi_compile _ _SHADOWS_SOFT
+
+// Baked Lightmap
+#pragma multi_compile _ LIGHTMAP_ON
+#pragma multi_compile _ DIRLIGHTMAP_COMBINED
+#pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+#pragma multi_compile _ SHADOWS_SHADOWMASK
+
+// Other
+#pragma multi_compile_fog
+#pragma multi_compile_instancing
+#pragma multi_compile _ DOTS_INSTANCING_ON
+#pragma multi_compile _ _SCREEN_SPACE_OCCLUSION
+```
+
+### Shader Feature
+
+Shader Feature和Multi Compile十分相似，但是它会额外生成一个禁用所有关键字的变体，并且所有未使用的变体不会包含到最终构建中。若需要在运行时启用/禁用关键字，则使用multi_compile。
+
+```c
+#pragma shader_feature _A _B (...etc)
+// 等效于
+#pragma multi_compile _ _A _B
+```
+
+### Shader Variants
+
+对于每一条`multi_compile`和`shader_feature`声明，最终会产生所有关键字组合的变体。例如下面这种情况就会总共产生12种变体：
+
+```c
+// AD,AE,BD,DE,CD,CE,ADF,AEF,BDF,BEF,CDF,CEF
+#pragma multi_compile _A _B _C
+#pragma multi_compile _D _E
+#pragma shader_feature _F
+```
+
+每增加一个带有两个关键字的multi_compile就会使变体数量翻倍，从而增加构建时间和构建大小。在着色器的Inspector中点击`Compile and Show Code`按钮可以查看变体数量。
+
+使用`vertex`和`fragment`版本的指令可以帮助减少变体数量，例如下面的情况只会生成2种变体。
+
+```c
+#pragma multi_compile_vertex _ _A
+#pragma multi_compile_fragment _ _B
+#pragma shader_feature_vertex _C
+#pragma shader_feature_fragment _D
+```
+
+### 关键字限制
+
+每个项目最多可以有256个全局关键字，因此最好遵循一些命名约定来尽可能重复利用关键字。
+
+```c
+#pragma multi_compile _ _KEYWORD
+#pragma shader_feature _KEYWORD
+ 
+// If you need to know if that keyword is disabled
+// We can then just do :
+
+#ifndef _KEYWORD
+// aka "#if !defined(_KEYWORD)"
+// or "#ifdef _KEYWORD #else" also works too
+
+// ... code ...
+
+#endif
+```
+
+另外，每个Shader的局部关键字数量上限为64。
+
+```c
+#pragma multi_compile_local _ _KEYWORD
+#pragma shader_feature_local _KEYWORD
+ 
+// There's also local_fragment/vertex ones too!
+#pragma multi_compile_local_vertex _ _KEYWORD
+#pragma multi_compile_local_fragment _ _KEYWORD
+#pragma shader_feature_local_vertex _KEYWORD
+#pragma shader_feature_local_fragment _KEYWORD
+```
+
+
+
+
+
+
+
