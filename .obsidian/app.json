@@ -3,7 +3,7 @@
   "trashOption": "local",
   "newFileLocation": "folder",
   "newFileFolderPath": "00_Inbox",
-  "attachmentFolderPath": "00_Attachments",
+  "attachmentFolderPath": "./attachments",
   "defaultViewMode": "source",
   "livePreview": true,
   "showInlineTitle": true,
