@@ -146,3 +146,19 @@ LFS支持Git的最低版本是1.8.5，最新的Git安装包基本已经自带了
 知道哪些文件占用空间比较大之后，就可以使用`git lfs migrate import -everything -include="*.FBX, *.png, *.tga, *.jpg"`命令来修改所有的提交记录。注意区分大小写，比如.fbx和.FBX会被识别为两种类型。
 
 因为修改了提交记录，最后需要强制push来将本地所有的提交推送到远程仓库。
+
+## 遇到的问题
+
+### fatal: protocol 'https' is not supported
+
+克隆时粘贴链接可能使用了Ctrl+V，会生成\^C符号。
+
+解决方法是右键粘贴或Shift+Insert。
+
+## fatal: unable to access: SSL certificate problem: unable to get local issuer certificate
+
+原因是自签名证书无法被信任，临时的解决方案是禁用证书验证。
+
+```shell
+git config --global http.sslbackend schannel
+```
