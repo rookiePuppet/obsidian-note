@@ -60,3 +60,5 @@ glSetObjectOption(GL_WINDOW_TARGET, GL_OPTION_WINDOW_HEIGHT, 600);
 glBindObject(GL_WINDOW_TARGET, 0);
 ```
 
+使用这些对象的好处就是我们可以在应用当中定义多个对象，设置它们的参数，无论何时使用OpenGL状态进行操作时，就可以将预先的设置绑定到对象上。
+
