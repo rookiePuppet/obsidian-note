@@ -38,5 +38,25 @@ OpenGL的核心是C语言库，由于C语言的结构不能很好地翻译成其
 
 在OpenGL中，一个对象就是代表一个OpenGL状态的子集。例如代表绘制窗口的设置就是一个对象，我们可以设置窗口大小以及支持的颜色范围等等。
 
+一般都会像下面这样去使用对象：
 
+```C
+// The State of OpenGL
+struct OpenGL_Context {
+	...
+	object_name* object_Window_Target;
+	...
+};
+
+// create object
+unsigned int objectId = 0;
+glGenObject(1, &objectId);
+// bind/assign object to context
+glBindObject(GL_WINDOW_TARGET, objectId);
+// set options of object currently bound to GL_WINDOW_TARGET
+glSetObjectOption(GL_WINDOW_TARGET, GL_OPTION_WINDOW_WIDTH, 800);
+glSetObjectOption(GL_WINDOW_TARGET, GL_OPTION_WINDOW_HEIGHT, 600);
+// set context target back to default
+glBindObject(GL_WINDOW_TARGET, 0);
+```
 
