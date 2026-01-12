@@ -108,4 +108,6 @@ Filtering会对贴图进行模糊来使噪声最小化，但是可能会导致�
 
 在Hierarchy中右键选择GameObject>Light>Light Probe Group创建光照探针，最开始会有八个探针，然后可以在Hierarchy中选中探针组，在Scene窗口中使用Edit Light Probe Group工具进行编辑。
 
-光照探针首先应该放置在动态物体可能经过的区域，其次是光照级别发生明显变化的地方。
+光照探针首先应该放置在动态物体可能经过的区域，其次是光照级别发生明显变化的地方。当为物体计算光照时，引擎会找到最近的四个光照探针，然后混合它们的光照值。
+
+放置光照探针可能比较耗时，可以通过[代码](https://docs.unity3d.com/6000.3/Documentation/Manual/LightProbes-Placing-Scripting.html)方法来加速这个操作。由于光照探针的位置在运行时是只读的，对于包含光照探针的模块化场景内容，在组合时无法重新配置光照探针，不过这个问题在Unity6中可以通过新的API解决。
