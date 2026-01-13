@@ -111,3 +111,24 @@ Filtering会对贴图进行模糊来使噪声最小化，但是可能会导致�
 光照探针首先应该放置在动态物体可能经过的区域，其次是光照级别发生明显变化的地方。当为物体计算光照时，引擎会找到最近的四个光照探针，然后混合它们的光照值。
 
 放置光照探针可能比较耗时，可以通过[代码](https://docs.unity3d.com/6000.3/Documentation/Manual/LightProbes-Placing-Scripting.html)方法来加速这个操作。由于光照探针的位置在运行时是只读的，对于包含光照探针的模块化场景内容，在组合时无法重新配置光照探针，不过这个问题在Unity6中可以通过新的API解决。
+
+## 自适应探针体积（Adaptive Probe Volumes）
+
+因为放置探针是一项耗时的工作，而且场景的布局可能随时发生变化，然后又要重新放置探针。自适应探针体积就是为了解决这一问题的技术，它可以在数秒内自动完成探针的放置。
+
+通过以下步骤使用APVs：
+
+1. 在URP资产中将Light Probe System设置为Adaptive Probe Volumes
+2. 在Hierarchy窗口右键选择GameObject>Light>Adaptive Probe Volume
+3. 将APV模式设置为Global，保持默认的细分（Subdivision）设置
+4. 点击Bake Probe Volumes，引擎会扫描当前场景并将探针放置在合适的位置
+5. 在Rendering Debugger中开启Display Probes查看烘焙结果
+
+除此以外，通过添加多个不同细分的APV，可以对探针的放置密度有更精确的控制，从而带来更高的保真度。
+
+以下是针对[FPS Sample: The Inspection(The Inspection>Scenes>APV-Example)]示例场景的应用步骤：
+
+1. 在Lighting窗口的Adaptive Probe Volumes页签下，将Max Probe Spacing设置为81m
+2. 添加一个APV，设置为Global模式，将Override Probe Spacing设置为27m>81m
+3. 添加一个APV，设置为Local模式，将Override Probe Spacing设置为1m>9m，将体积设置成比帐篷稍微大一点。
+4. 烘焙探针体积。
