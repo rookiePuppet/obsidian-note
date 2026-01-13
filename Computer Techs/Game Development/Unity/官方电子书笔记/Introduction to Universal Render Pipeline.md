@@ -132,3 +132,16 @@ Filtering会对贴图进行模糊来使噪声最小化，但是可能会导致�
 2. 添加一个APV，设置为Global模式，将Override Probe Spacing设置为27m>81m
 3. 添加一个APV，设置为Local模式，将Override Probe Spacing设置为1m>9m，将体积设置成比帐篷稍微大一点。
 4. 烘焙探针体积。
+
+### Lighting Scenario
+
+APVs的另一个功能是可以在不同的间接光数据之间切换，一个Lighting Scenario资产包含了一个场景的光照烘焙数据或者烘焙集，可以将不同的光照配置烘焙到不同的Lighting Scenario，然后在运行时进行切换。
+
+以下是使用Lighting Scenarios的步骤：
+
+1. 在URP资产中启用Lighting > Enable Lighting Scenarios
+2. 打开Lighting窗口的Adaptive Prove Volumes面板，在Lighting Scenarios部分点击+按钮添加Lighting Scenario资产。
+3. 在Probe Placement部分，将Probe Positions设置为Don't Recalculate，确保Unity在重新烘焙光照时不会改变探针位置，以免使烘焙的Scenarios结果失效。
+4. 在Lighting Scenarios部分，选中一个Scenario使其激活，然后点击Generate Lighting就会将烘焙结果保存到激活的Scenario中。
+
+在运行时可以使用*ProbeReferceVolume* API来切换Lighting Scenario。
