@@ -187,7 +187,15 @@ APVs的另一个功能是可以在不同的间接光数据之间切换，一个L
 
 当开启天空遮蔽时，Unity会烘焙一个额外的静态天空遮蔽值存储到APV中的每一个探针上，天空遮蔽值代表的是探针从天空接收到的间接光量（包括从静态物体反射来的光照）。
 
+通过以下步骤开启天空遮蔽：
 
+1. 在Lighting窗口中的Scene面板启用Progressive GPU Lightmapper
+2. 在APVs面板启用Sky Occlusion
+
+在烘焙天空遮蔽之后，场景光照会响应环境探针的更新。在URP中，只有在使用Color或Gradient模式时，环境探针才会实时更新，这意味着必须手动处理天空颜色来匹配天空的动态视觉变化。
+
+> [!note]
+> URP支持对探针逐顶点采样，对于低端设备来说可以提升性能。在URP资产的Lighting部分的Advanced Properties中设置Evaluation Mode为Per Vertex。
 
 ### 光照探针vs自适应探针体积
 
