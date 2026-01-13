@@ -168,6 +168,27 @@ APVs的另一个功能是可以在不同的间接光数据之间切换，一个L
 - 调整Baking Set属性
 - 使用Probe Adjustment Volume组件
 
+### 流式APVs
+
+流式APVs用于烘焙超出CPU或GPU内存的APV数据，在运行时按需加载，当摄像机移动时，URP只加载处于摄像机视锥体之中的单元APV数据。
+
+可以为不同的URP质量等级开启或关闭流式APVs，通过以下步骤开启流式APVs：
+
+1. 进入Edit>Project Settings>Quality，选择一个质量等级，双击打开对应的渲染管线资产。
+2. 在Lighting部分可以启用两种类型的流式：
+	1. Enable Disk Streaming：从硬盘到CPU内存的流式传输
+	2. Enable GPU Streaming：从CPU内存到GPU内存的流式传输，必须先开启Disk Streaming
+
+### 天空遮蔽
+
+当一个游戏对象对天空进行颜色采样时，如果光线无法到达这些对象，Unity会降低采样得到的颜色的亮度，这个过程叫做天空遮蔽。
+
+在Unity中，天空遮蔽使用来自环境探针的天空颜色，会在运行时更新。这意味着当天空颜色变化时，可以动态地更新游戏对象的光照。
+
+当开启天空遮蔽时，Unity会烘焙一个额外的静态天空遮蔽值存储到APV中的每一个探针上，天空遮蔽值代表的是探针从天空接收到的间接光量（包括从静态物体反射来的光照）。
+
+
+
 ### 光照探针vs自适应探针体积
 
 | Light Probe Groups                              | Adpative Prove Volumes                        |
