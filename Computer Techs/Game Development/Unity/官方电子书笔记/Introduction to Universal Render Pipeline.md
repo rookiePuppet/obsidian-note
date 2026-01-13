@@ -146,6 +146,14 @@ APVs的另一个功能是可以在不同的间接光数据之间切换，一个L
 
 在运行时可以使用*ProbeReferceVolume* API来切换Lighting Scenario。
 
+### 修复APVs带来的问题
+
+在Rendering Debugger中开启Debug Probe Sampling，可以查看探针以及监测一个像素是如何对这些探针进行采样的。
+
+由于探针是被放置在一个网格中的，有时可能会造成渲染上的错误，例如黑暗区域变得明亮或者反过来，编辑器提供了一些工具来让TA快速修复这些问题。
+
+在几何内部的探针被称为无效探针，当从探针发射采样射线去捕获周围的光照数据时，如果射线命中了几何内部没有被照明的背面，URP就会将该探针标记为无效。
+
 ### 光照探针vs自适应探针体积
 
 | Light Probe Groups                              | Adpative Prove Volumes                        |
