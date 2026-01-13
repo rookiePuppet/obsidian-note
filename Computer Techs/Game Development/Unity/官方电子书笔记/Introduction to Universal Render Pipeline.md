@@ -158,7 +158,15 @@ APVs的另一个功能是可以在不同的间接光数据之间切换，一个L
 
 ### 光线裂缝
 
-光线裂缝指的是在墙面或天花板角落里太黑或太亮的区域，通常发生在当几何接收到其不可见的光照探针的光照时。
+光线裂缝指的是在墙壁或天花板角落里太黑或太亮的区域，通常发生在当几何接收到其不可见的光照探针的光照时。因为APVs使用的是规则网格，光照探针可能不会贴合墙壁。
+
+采取以下方法来解决：
+
+- 创建更厚的墙壁
+- 为场景添加一个APVs Options override：添加Volume，为其设置APVs Options override，用以调整游戏对象采样光照探针的位置
+- 启用Rendering Layers（渲染层级）：在Lighting窗口的APVs面板配置Rendering Layer Masks，让APV为每一个光照探针分配渲染层级遮罩
+- 调整Baking Set属性
+- 使用Probe Adjustment Volume组件
 
 ### 光照探针vs自适应探针体积
 
