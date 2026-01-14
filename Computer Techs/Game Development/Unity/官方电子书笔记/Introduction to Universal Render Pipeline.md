@@ -244,3 +244,8 @@ SubShader {
 这是一个SubShader块的基础结构，URP着色器会使用`"RenderPipeline" = "UniversalPipeline"`标签声明子着色器所使用的渲染管线为URP，着色器代码使用的是HLSL语言，被`HLSLPROGRAM/ENDHLSL`所包裹。
 
 Unity会使用GPU支持的第一个子着色器进行执行，如果没有找到使用`UniversalPipeline`的着色器时，就会渲染洋红色的错误着色器。
+
+## 自定义着色器
+
+*通过Create>Shader>Unlit Shader创建自定义Shader得到的是不兼容SRP Batcher的内置渲染管线Shader模板。*
+
