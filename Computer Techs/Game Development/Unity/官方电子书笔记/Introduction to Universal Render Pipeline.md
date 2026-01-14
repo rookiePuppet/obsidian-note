@@ -249,3 +249,21 @@ Unity会使用GPU支持的第一个子着色器进行执行，如果没有找到
 
 *通过Create>Shader>Unlit Shader创建自定义Shader得到的是不兼容SRP Batcher的内置渲染管线Shader模板。*
 
+# 管线回调
+
+SRP的一大特性是可以使用C#脚本在渲染过程的任何阶段添加代码，能够注入脚本的阶段包括：
+
+- Rendering shadows
+- Rendering prepasses
+- Rendering G-buffer
+- Rendering deferred lights
+- Rendering opaques
+- Rendering Skybox
+- Rendering transparents
+- Rendering post-processing
+
+可以在Universal Renderer Data的Inspector中通过Add Renderer Feature选项将脚本注入到渲染流程中。
+
+## Render Objects
+
+游戏里的一个普遍问题是角色消失在环境物体背后时会丢失视野，一个解决办法是当环境模型出现在角色与摄像机之间时，显示角色的轮廓。
