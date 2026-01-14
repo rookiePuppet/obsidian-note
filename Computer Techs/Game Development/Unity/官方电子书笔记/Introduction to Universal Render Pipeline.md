@@ -267,3 +267,9 @@ SRP的一大特性是可以使用C#脚本在渲染过程的任何阶段添加代
 ## Render Objects
 
 游戏里的一个普遍问题是角色消失在环境物体背后时会丢失视野，一个解决办法是当环境模型出现在角色与摄像机之间时，显示角色的轮廓。
+
+1. 首先需要创建一个角色被遮挡时使用的材质，使用Lit或Unlit着色器，设置Base Map颜色
+2. 为了避免不必要地重复渲染角色，需要将角色放置在一个特殊的层级（*SeeBehind*）
+3. 在Renderer Data中，将*SeeBehind*层级从**Opaque Layer Mask**中排除
+4. 点击Add Renderer Feature添加一个Render Objects
+5. 设置其名字以及执行时机（AfterRenderingOpaques） ，将**LayerMask**设置为*SeeBehind*（角色所在的层级），**Override Mode**为设置为Material，选择第一步创建的材质，将**Depth Test**设置为Greater，让该通道只在正在渲染的像素深度大于当前深度缓冲区中存储的值时进行渲染。
