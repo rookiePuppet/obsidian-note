@@ -273,3 +273,21 @@ SRP的一大特性是可以使用C#脚本在渲染过程的任何阶段添加代
 3. 在Renderer Data中，将*SeeBehind*层级从**Opaque Layer Mask**中排除
 4. 点击Add Renderer Feature添加一个Render Objects
 5. 设置其名字以及执行时机（AfterRenderingOpaques） ，将**LayerMask**设置为*SeeBehind*（角色所在的层级），**Override Mode**为设置为Material，选择第一步创建的材质，将**Depth Test**设置为Greater，让该通道只在正在渲染的像素深度大于当前深度缓冲区中存储的值时进行渲染。
+6. 再添加一个Render Objects，用于渲染不被遮挡的角色，**Event**设置为AfterRenderingOpaques，将**LayerMask**设置为*SeeBehind*（角色所在的层级）
+
+## 渲染图系统
+
+使用渲染图系统可以用一种易维护和模块化的方式来创建自定义的SRP，**渲染图**是对自定义SRP渲染通道的高层表示，明确地声明了渲染管线在多个渲染通道之间如何使用资源。
+
+以这种方式描述渲染通道有两个好处：简化渲染管线的配置，使渲染图系统高效管理渲染管线的各个部分，提高运行时性能。
+
+### 主要原则
+
+- 不再直接操作资源，而是使用渲染图系统特定的句柄。渲染图管理的资源类型包括RTHandles，ComputeBuffers和RendererLists。
+- 实际的资源只能在渲染通道的执行代码中被访问
+- 需要明确声明各个渲染通道的资源使用情况（读取/写入）
+- 渲染图不会保留上一次执行过程中创建的资源，对于需要持久化的资源，可以在渲染图外部创建它们，但是渲染图不会追踪其依赖关系以及管理其生命周期
+- 渲染图大多数将RTHandles用于纹理资源，这对于编写着色器和设置它们的方式有重要影响
+
+### 资源管理
+
