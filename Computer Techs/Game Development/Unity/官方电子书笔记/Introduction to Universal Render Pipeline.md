@@ -226,3 +226,21 @@ APVs的另一个功能是可以在不同的间接光数据之间切换，一个L
 
 使用盒投影可以从探针创建一个有限距离的反射贴图，使物体可以根据其与立方体贴图表面的距离显示出不同大小的反射。环境立方体贴图的大小取决于探针的作用区域，也就是它的Box Size属性。
 
+# 着色器
+
+## 比较URP和Built-In着色器
+
+```C
+SubShader {
+	Tags { "RenderPipeline" = "UniversalPipeline" }
+	Pass {
+		HLSLPROGRAM
+		...
+		ENDHLSL
+	}
+}
+```
+
+这是一个SubShader块的基础结构，URP着色器会使用`"RenderPipeline" = "UniversalPipeline"`标签声明子着色器所使用的渲染管线为URP，着色器代码使用的是HLSL语言，被`HLSLPROGRAM/ENDHLSL`所包裹。
+
+Unity会使用GPU支持的第一个子着色器进行执行，如果没有找到使用`UniversalPipeline`的着色器时，就会渲染洋红色的错误着色器。
