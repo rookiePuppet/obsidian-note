@@ -412,6 +412,14 @@ public class StackController : MonoBehaviour
 
 ## 屏幕截图
 
+将这个脚本挂在主摄像机上，点击屏幕上的按钮就可以将游戏画面渲染到一张离屏的渲染纹理中。
+
+脚本首先在Start回调中创建了一个**RenderTexture**，当用户按下“Render Quest”按钮后，`RenderQuest`函数就会被调用。
+
+在`RenderQuest`函数中，首先创建一个`RenderPipeline.StandardRequest`实例，检查当前渲染管线是否支持**RenderQuest**框架，如果支持，就将在Start回调中创建的RenderTexutre作为Request对象的目标，并使用`RenderPipeline.SubmitRenderRequest`开始渲染。
+
+渲染结果会经过`ToTexture2D`方法转为Texture2D对象，然后使用Texture2D实例的`EncodeToPNG`方法得到字节数组，存储到文件中。
+
 ```CS
 using System.Collections;
 using System.Collections.Generic;
@@ -429,8 +437,7 @@ public class StandardRenderRequest : MonoBehaviour
 	}
 	
 	// When user clicks on GUI button,
-	// Render Requests are sent with various output textures to render
-	given frame
+	// Render Requests are sent with various output textures to render given frame
 	private void OnGUI()
 	{
 		GUILayout.BeginVertical();
