@@ -305,5 +305,47 @@ SRP的一大特性是可以使用C#脚本在渲染过程的任何阶段添加代
 - 编译（Compilation）：编译渲染图。渲染图系统会剔除掉产生无用输出的渲染通道，计算资源的生命周期
 - 执行（Execution）：执行渲染图。按声明顺序执行渲染图，在渲染通道之间创建或释放资源
 
+# 后处理
+
+URP通过**Volume**框架来添加后处理效果，Unity6增加了默认Volume，在Project Settings>Graphics>Volume中可以找到，默认Volume会影响整个项目，但是可以被场景中的Volume所覆盖。URP资产中也有一个Volume设置，同样可以被场景中的Volume覆盖。
+
+Volume可以是**全局**或**局部**的，全局Volume作用于整个场景，局部Volume作用于一个碰撞盒范围。
+
+## 使用URP后处理框架
+
+1. 首先确认主摄像机开启了Post Processing选项
+2. 在Hierarchy窗口右键Create>Volume>Global Volume，创建一个全局Volume
+3. 在Volume组件的Inspector中，点击New创建新的Profile
+4. 点击Add Override添加需要的后处理效果
+
+## 添加局部Volume
+
+可以让摄像机在场景中移动时，触发不同的后处理配置，使用局部Volume就可以实现这种效果。
+
+1. 在Hierarchy窗口右键Create>Volume>Box Volume/Sphere Volume/Convex Mesh Volume，根据实际需求选择不同形状的Volume
+2. 在Volume组件的Inspector中创建配置文件，另外还有一些设置：
+	1. 混合距离（Blend Distance）：开始混合/淡入的距离（相对碰撞盒位置），在碰撞盒边缘是完全淡入淡出的状态
+	2. 权重（Weight）：控制后处理效果的程度
+	3. 优先级（Priority）：当多个Volume同时影响场景时会根据优先级选择使用其中一个
+3. 移动Volume到合适的位置，调整其碰撞盒范围
+
+## URP中可用的后处理效果
+
+后处理效果会严重影响处理器性能，所以应仔细考虑这些效果在低端设备和移动设备上的使用。
+
+| 效果                   | 描述                            |
+| -------------------- | ----------------------------- |
+| Bloom                | 在超出预设亮度级别的像素周围添加发光            |
+| Channel Mixer        | 修改每一个输入颜色通道在整体混合上的影响          |
+| Chromatic Aberration | 在图像明暗区域的边界上产生色变               |
+| Color Adjustments    | 对最终渲染图像的整体色调、亮度和对比度进行微调       |
+| Color Curves         | 对色调、饱和度和明度在特定范围上进行调整的高级方式     |
+| Color Lookup         | 使用一张查找纹理将每一个像素的颜色映射为新的值       |
+| Depth of Field       | 模拟摄像机镜头的聚焦特性                  |
+| Film Grain           | 模拟胶片的随机光学纹理                   |
+| Lens Distortion      | 模拟真实摄像机镜头产生的图像畸变效果            |
+| Lift Gamma Gain      | 使用轨迹球调整图像不同区域的明暗度             |
+| Motion Blur          | 模拟真实摄像机在拍摄移动快于曝光时间的物体时产生的模糊效果 |
+| Panini Projection    |                               |
 
 
