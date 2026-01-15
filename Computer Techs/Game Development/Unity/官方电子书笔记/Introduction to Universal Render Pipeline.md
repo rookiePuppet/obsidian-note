@@ -346,6 +346,6 @@ Volume可以是**全局**或**局部**的，全局Volume作用于整个场景，
 | Lens Distortion      | 模拟真实摄像机镜头产生的图像畸变效果            |
 | Lift Gamma Gain      | 使用轨迹球调整图像不同区域的明暗度             |
 | Motion Blur          | 模拟真实摄像机在拍摄移动快于曝光时间的物体时产生的模糊效果 |
-| Panini Projection    |                               |
+| Panini Projection    | 在宽阔视野下获得恰当的透视效果               |
 
 
