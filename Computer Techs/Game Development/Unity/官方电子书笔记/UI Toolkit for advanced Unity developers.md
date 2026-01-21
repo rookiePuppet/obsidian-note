@@ -17,3 +17,20 @@ UI Toolkit相比旧的UI系统的优势：
 
 UI资产可以像代码一样通过IDE去编辑，也可以使用UI Builder进行可视化编辑。
 
+# 图形字体资源准备
+
+## 位图图像（Bitmap Graphics）
+
+Unity支持大多数的图像文件类型，如PNG、BMP、TIF、TGA、JPG和PSD。当你将这些格式的文件添加进Assets文件夹之后，Unity会将它们导入为Texture 2D（3D项目）或Sprites（2D项目），可以在Texture Type处更改类型，UI Toolkit对这两种格式的位图图形都支持。
+
+纹理只会包含图像的尺寸和格式信息，而精灵则会包含UI Toolkit所使用的一些额外属性。
+
+## 精灵（Sprites）
+
+精灵在2D游戏中作为纹理，由Sprite Renderer组件所使用。2D精灵可以平铺、绑定骨骼和蒙皮，在2D灯光中可以包含自定义几何或额外贴图。
+
+大多数UI图形资产会被渲染在屏幕空间，而不受Unity的世界缩放影响（一单位代表3D空间中的一立方米），UI Toolkit会管理这些图形的缩放。精灵的PPU（Pixels Per Unit）影响着它们在UI上的大小，例如，如果你的精灵在每个网格单元上有128个像素，那就把PPU设置为128。
+
+精灵是映射在平面矩形3D网格上的2D纹理，在导入时默认使用*Mesh Type：Tight*设置，使网格紧贴着精灵上非透明像素的边缘。
+
+
