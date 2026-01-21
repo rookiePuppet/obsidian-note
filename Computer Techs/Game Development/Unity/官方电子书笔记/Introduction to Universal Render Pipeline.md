@@ -1,0 +1,489 @@
+# 灯光
+
+## 渲染器的选择
+
+URP提供了不同的渲染技术，每一种都有其优势和缺陷，如何选择这些渲染技术取决于项目的特定需求和限制。
+
+|          | 原理                                                                                | 优点                                                          | 缺点                                                         |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- |
+| Forward  | 场景中的物体被逐一渲染，每一个像素单独计算。这意味着对于屏幕上的每一个像素，Unity都要对场景中的每一个对象计算光照和着色，以确定它们对像素最终颜色的贡献。   | 流程相对直接，易于理解，在光源较少和材质简单的场景中表现好。                              | 由于需要为场景中每一个光源使用多个通道处理，在面对大量光源和复杂材质的场景时可能比较低效。              |
+| Forward+ | 将光源分组为集群，只有处于集群当中的物体才被纳入光照计算，而不是对所有物体逐一处理每一个光源。                                   | 相比于Forward渲染，尤其在大量光源的场景下有更好的性能，能通过减少需要计算光照的物体数量来更高效地利用硬件资源。 | 在极端大量光源和复杂场景下可能仍然表现不佳，并且要实现Forward+渲染需要做更多的优化工作。           |
+| Deferred | 将光照和着色计算从几何渲染过程中解耦出来。首先将几何渲染到一个缓冲区集合（包含每一个像素的位置、法线和材质属性等信息）中，然后根据缓冲区数据进行逐像素的光照计算。 | 对于渲染大量光源或复杂材质的场景非常高效，因为光照是逐像素而不是逐对象计算的。                     | 由于需要存储额外的缓冲区，内存占用会增加。对透明物体的渲染有限制，以及在处理特定类型的光照效果时有困难（如体积光）。 |
+## 用于光照场景的URP着色器
+
+| Shader      | 描述                                                                                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Lit         | 以写实质量渲染真实世界中的表面，在各种光照条件下都能获得逼真的光影和反射效果。支持烘焙、混合以及实时光照，是大多数支持光照的材质的默认选项。使用的是基于物理的着色模型，由于其着色计算的复杂性，最好避免在低端移动设备上使用。 |
+| Simple Lit  | 使用非能量守恒的Blinn-Phong着色模型，更适合非基于物理着色的项目以及低端移动设备。                                                                  |
+| Complex Lit | 拥有Lit的所有特性，会计算两次高光反射（基础层和位于基础层之上的模拟的一层透明薄层）。当需要使用清漆选项实现汽车的金属光泽时，选择该着色器。                                         |
+| Baked Lit   | 对于不需要实时光照的对象，例如永远不会受动态物体、实时光源和动态阴影影响的远处静态物体，使用该着色器可提高性能。                                                        |
+## 照亮新场景
+
+在URP中照亮一个新场景的第一步是创建一个新的光照设置资产，通过切换光照设置资产可以在不同光照设置之间切换。
+
+## 环境光照
+
+最主要的环境光是在Lighting面板中的Environment页签下配置的。
+
+可以使用场景天空盒，设置强度、渐变或颜色来设置环境光照。Skybox模式要求按需烘焙来计算天空的环境探针，只有Gradient和Color模式会实时更新。
+
+## 阴影（Shadows）
+
+### 主光源阴影分辨率（Main Light shadow resolution）
+
+实时阴影需要渲染一张包含光源视角的物体深度数据的阴影纹理，阴影纹理的分辨率越高，阴影的视觉保真度就越高，当然也需要更多的算力和内存。影响阴影计算的因素包括：
+
+1. 渲染在阴影纹理中的阴影投射器数量，对于主光源，该数量取决于阴影距离（URP资产Shadows模块的Max Distance）
+2. 可见的阴影接收者
+3. 阴影级联分段（Shadow Cascades splits）
+4. 阴影过滤（软阴影）
+
+> [!NOTE] 阴影级联
+> 方向光在摄像机附近产生的实时阴影会出现像素化的问题叫做透视走样，阴影级联可以解决该问题。
+
+最高分辨率得到的效果并不总是最理想的，例如使用软阴影时，阴影贴图会被模糊，使用高分辨率的阴影贴图会导致阴影边缘过于清晰，得不到模糊效果。
+
+### 主光源阴影最大距离（Main Light Shadow Max Distance）
+
+最大距离的单位和场景单位一样，当最大距离设置太大时，阴影贴图会分散在过大的区域，导致镜头内部分的贴图分辨率远低于需求。
+
+最大距离需要根据玩家所能看到物体的最远距离来设置，也就是说如果玩家最远只能看到离摄像机60单位的阴影，那就将该数值设置为60。
+
+当混合光源的光照模式设置为Shadowmask时，超出阴影最大距离的物体的阴影会被烘焙，只有动态阴影才会被最大距离限制。
+
+### 阴影级联（Shadow Cascades）
+
+物体由于透视消失在远处，可以降低远距离视野的阴影分辨率，将更多的资源用于处理靠近摄像机的阴影，这就是阴影级联的核心思想。
+
+该技术的原理是将原来的单张阴影贴图拆分为多张贴图，拆分的逻辑是根据摄像机视锥体深度划分多个层次进行分割。每张级联贴图的覆盖范围和尺寸都不同，距离越近的贴图覆盖范围和尺寸越小，主要为近处物体提供更好的细节，距离越远的贴图覆盖范围和尺寸大，阴影相对模糊，因为远处阴影不需要细节（看不清）。相邻的级联之间会进行混合，以实现平滑过渡。
+
+对于小场景，一个级联就可达到最佳效果。如果阴影最大距离非常大，那就需要两到三个级联。
+
+### 附加光源阴影（Additional Lgith Shadows）
+
+附加光源只在其模式设置为逐像素（Per Vertex）时，才会投射阴影。
+
+阴影图集（Shadow Atlas）是一张组合了所有光源（能投射阴影）的阴影贴图的纹理，由于点光源需要在任何方向上投射阴影，一个点光源会投射六张阴影贴图，创建出一个立方体贴图，这就造成了点光源对性能需求是最高的。
+
+附加光源在不同层次投射阴影的分辨率可通过Shadow Resolution tiers设置。
+
+### 灯光模式（Light modes)
+
+一般场景中静态的几何体占大多数，所以对于一个静态的光源，我们不需要实时重复地为其计算光照和阴影，只需要在开发时计算一次，在渲染时直接使用预先计算好的数据即可，这种方法叫做光照贴图映射或烘焙。
+
+要将几何体纳入光照映射，需要在GameObject Inspector中勾选Static。
+
+光照映射相关设置位于Lighting窗口的Scene部分，对于光照贴图的分辨率，应更尽可能小，另外可以选择Progressive GPU来加速光照贴图的生成。
+
+Filtering会对贴图进行模糊来使噪声最小化，但是可能会导致两个物体阴影相交的地方产生缝隙，使用A-Trous滤波可以最小化这种误差。
+
+当使用Mixed模式的灯光时，可以在Lighting窗口中将光照模式设置为以下三种：
+
+- Baked Indirect：仅间接光会烘焙到光照贴图和光照探针，直接光和阴影是实时的。该模式非常消耗性能，不适合用于移动端。
+- Subtractive：将来自Mixed模式方向光的直接光烘焙到静态几何，然后减去动态几何投射的阴影。这种模式会导致静态几何无法向动态物体投射阴影，除非使用了光照探针或自适应探针体积（ADV）。URP会对方向光的光照值进行估算，然后从全局光照烘焙中减去估值，最终的光照颜色会受到Real-time Shadow Color设置的约束。该模式是最适合低端设备的选项，但是不能将烘焙阴影和实时阴影进行结合，导致视觉瑕疵。
+- Shadowmask：和Baked Indirect模式一样会结合动态和烘焙阴影，在远处也能正常渲染阴影。该模式会使用一张额外的阴影遮罩纹理，将额外信息存储在光照探针中，这能提供最高的阴影保真度，但也是最消耗性能和内存的。视觉上与Backed Indirect模式的差距在视野远处才会明显，这很适合开放世界场景，只推荐中高端设备使用。
+
+在Mesh Renderer组件的Lightmapping中，可以调节Scale In Lightmap参数，让远处物体在光照贴图中占据更少的空间。
+
+最后点击Lighting窗口中的Generate Lighting即可开始烘焙。烘焙时间取决于静态物体的数量，Mixed和Baked模式灯光的数量，以及光照贴图分辨率、最大光照贴图尺寸等设置，另外烘焙时间是和烘焙中使用的射线数量成正比的。
+
+## 渲染层级（Rendering Layers）
+
+利用渲染层级可以特定的游戏物体只受特定的灯光影响，从而在场景中强调突出它们。
+
+设置渲染层级的步骤：
+
+1. 在URP资产的Lighting部分，点击三点图标，选择Advanced Properties，开启Use Rendering Layers。
+2. 进入Project Settings>Tags and Layers>Rendering Layers配置渲染层级名称。
+3. 在灯光组件的Rendering部分设置渲染层级。
+
+## 光照探针（Light Probes）
+
+探针在场景中仅仅是一个点，在开发时会对这个位置计算全局光照，在运行时渲染一帧的时候，包含了光照计算的URP着色器会利用最近的探针进行混合得到全局光照值。
+
+> [!NOTE] 全局光照
+> 全局光照是一个模拟光线如何从表面反射到其他表面的系统，从而产生间接光，而不是仅限于直接照射到表面的光线。
+
+在烘焙光照时，光照探针能保存环境中某个特定位置的光照数据，确保在环境中移动的动态物体的照明能够反映出烘焙物体所用的光照级别（在黑暗区域显暗，在明亮区域显亮）。由于采样是逐物体的（对于一个物体只选取一个代表性的点进行采样），所以大型物体可能引起光照异常，这种情况可以考虑使用APVs（逐像素采样）。
+
+在Hierarchy中右键选择GameObject>Light>Light Probe Group创建光照探针，最开始会有八个探针，然后可以在Hierarchy中选中探针组，在Scene窗口中使用Edit Light Probe Group工具进行编辑。
+
+光照探针首先应该放置在动态物体可能经过的区域，其次是光照级别发生明显变化的地方。当为物体计算光照时，引擎会找到最近的四个光照探针，然后混合它们的光照值。
+
+放置光照探针可能比较耗时，可以通过[代码](https://docs.unity3d.com/6000.3/Documentation/Manual/LightProbes-Placing-Scripting.html)方法来加速这个操作。由于光照探针的位置在运行时是只读的，对于包含光照探针的模块化场景内容，在组合时无法重新配置光照探针，不过这个问题在Unity6中可以通过新的API解决。
+
+## 自适应探针体积（Adaptive Probe Volumes）
+
+因为放置探针是一项耗时的工作，而且场景的布局可能随时发生变化，然后又要重新放置探针。自适应探针体积就是为了解决这一问题的技术，它可以在数秒内自动完成探针的放置。
+
+通过以下步骤使用APVs：
+
+1. 在URP资产中将Light Probe System设置为Adaptive Probe Volumes
+2. 在Hierarchy窗口右键选择GameObject>Light>Adaptive Probe Volume
+3. 将APV模式设置为Global，保持默认的细分（Subdivision）设置
+4. 点击Bake Probe Volumes，引擎会扫描当前场景并将探针放置在合适的位置
+5. 在Rendering Debugger中开启Display Probes查看烘焙结果
+
+除此以外，通过添加多个不同细分的APV，可以对探针的放置密度有更精确的控制，从而带来更高的保真度。
+
+以下是针对[FPS Sample: The Inspection(The Inspection>Scenes>APV-Example)]示例场景的应用步骤：
+
+1. 在Lighting窗口的Adaptive Probe Volumes页签下，将Max Probe Spacing设置为81m
+2. 添加一个APV，设置为Global模式，将Override Probe Spacing设置为27m>81m
+3. 添加一个APV，设置为Local模式，将Override Probe Spacing设置为1m>9m，将体积设置成比帐篷稍微大一点。
+4. 烘焙探针体积。
+
+### Lighting Scenario
+
+APVs的另一个功能是可以在不同的间接光数据之间切换，一个Lighting Scenario资产包含了一个场景的光照烘焙数据或者烘焙集，可以将不同的光照配置烘焙到不同的Lighting Scenario，然后在运行时进行切换。
+
+以下是使用Lighting Scenarios的步骤：
+
+1. 在URP资产中启用Lighting > Enable Lighting Scenarios
+2. 打开Lighting窗口的Adaptive Prove Volumes面板，在Lighting Scenarios部分点击+按钮添加Lighting Scenario资产。
+3. 在Probe Placement部分，将Probe Positions设置为Don't Recalculate，确保Unity在重新烘焙光照时不会改变探针位置，以免使烘焙的Scenarios结果失效。
+4. 在Lighting Scenarios部分，选中一个Scenario使其激活，然后点击Generate Lighting就会将烘焙结果保存到激活的Scenario中。
+
+在运行时可以使用*ProbeReferceVolume* API来切换Lighting Scenario。
+
+### 修复APVs带来的问题
+
+在Rendering Debugger中开启Debug Probe Sampling，可以查看探针以及监测一个像素是如何对这些探针进行采样的。
+
+由于探针是被放置在一个网格中的，有时可能会造成渲染上的错误，例如黑暗区域变得明亮或者反过来，编辑器提供了一些工具来让TA快速修复这些问题。
+
+在几何内部的探针被称为**无效探针**，当从探针发射采样射线去捕获周围的光照数据时，如果射线命中了几何内部没有被照明的背面，URP就会将该探针标记为无效。
+
+**虚拟偏移**可以通过移动探针的捕捉点，将它们移动到碰撞体之外，变成有效探针。
+
+### 光线裂缝（Light leaks）
+
+光线裂缝指的是在墙壁或天花板角落里太黑或太亮的区域，通常发生在当几何接收到其不可见的光照探针的光照时。因为APVs使用的是规则网格，光照探针可能不会贴合墙壁。
+
+采取以下方法来解决：
+
+- 创建更厚的墙壁
+- 为场景添加一个APVs Options override：添加Volume，为其设置APVs Options override，用以调整游戏对象采样光照探针的位置
+- 启用Rendering Layers（渲染层级）：在Lighting窗口的APVs面板配置Rendering Layer Masks，让APV为每一个光照探针分配渲染层级遮罩
+- 调整Baking Set属性
+- 使用Probe Adjustment Volume组件
+
+### 流式APVs（Streaming APVs）
+
+流式APVs用于烘焙超出CPU或GPU内存的APV数据，在运行时按需加载，当摄像机移动时，URP只加载处于摄像机视锥体之中的单元APV数据。
+
+可以为不同的URP质量等级开启或关闭流式APVs，通过以下步骤开启流式APVs：
+
+1. 进入Edit>Project Settings>Quality，选择一个质量等级，双击打开对应的渲染管线资产。
+2. 在Lighting部分可以启用两种类型的流式：
+	1. Enable Disk Streaming：从硬盘到CPU内存的流式传输
+	2. Enable GPU Streaming：从CPU内存到GPU内存的流式传输，必须先开启Disk Streaming
+
+### 天空遮蔽（Sky occlusion）
+
+当一个游戏对象对天空进行颜色采样时，如果光线无法到达这些对象，Unity会降低采样得到的颜色的亮度，这个过程叫做天空遮蔽。
+
+在Unity中，天空遮蔽使用来自环境探针的天空颜色，会在运行时更新。这意味着当天空颜色变化时，可以动态地更新游戏对象的光照。
+
+当开启天空遮蔽时，Unity会烘焙一个额外的静态天空遮蔽值存储到APV中的每一个探针上，天空遮蔽值代表的是探针从天空接收到的间接光量（包括从静态物体反射来的光照）。
+
+通过以下步骤开启天空遮蔽：
+
+1. 在Lighting窗口中的Scene面板启用Progressive GPU Lightmapper
+2. 在APVs面板启用Sky Occlusion
+
+在烘焙天空遮蔽之后，场景光照会响应环境探针的更新。在URP中，只有在使用Color或Gradient模式时，环境探针才会实时更新，这意味着必须手动处理天空颜色来匹配天空的动态视觉变化。
+
+> [!note]
+> URP支持对探针逐顶点采样，对于低端设备来说可以提升性能。在URP资产的Lighting部分的Advanced Properties中设置Evaluation Mode为Per Vertex。
+
+### 光照探针vs自适应探针体积
+
+| Light Probe Groups                              | Adpative Prove Volumes                        |
+| ----------------------------------------------- | --------------------------------------------- |
+| 放置探针耗时，几何发生改变时要重新定位                             | 放置迅速，容易更新                                     |
+| 为物体计算光照时只使用一个探针插值：物体从黑暗到明亮的地方不能很好地过渡，大型物体问题更加明显 | 逐像素使用探针插值计算光照：过渡更平滑，体积效果更好                    |
+| 静态物体通常使用光照贴图计算光照，只有动态物体使用探针                     | 不需要光照贴图或光照贴图UV：对场景中所有物体使用同一种照明方案，大世界照明的内存预算有限 |
+| 探针可以随意放置，在运行时也能移动                               | 探针放置在一个网格结构中，不能在运行时移动                         |
+| 不支持切换GI（全局光照）                                   | 使用Lighting Scenario可以切换不同的光照情景，例如从白天到晚上。      |
+## 反射探针（Reflection Probes）
+
+像Maya或Blender这种光线追踪工具，需要花费大量时间准确地逐像素计算反光表面的每一帧，对于实时渲染来说这个过程太久了。
+
+实时渲染器中的反射使用的是环境贴图（预渲染的立方体贴图）。Unity使用SkyManager提供一张默认贴图，但是只使用一张贴图作为场景中所有位置的反射源可能会产生不真实的效果。
+
+**反射探针**是放置在场景中关键位置的一个预渲染的立方体贴图，当动态物体移动时，会选取最近的反射探针作为其反射源，也可以设置场景混合多个探针。
+
+在Hieraychy窗口右键选择Light>Reflection Probe来添加反射探针，确定好位置和设置之后，点击Bake来创建立方体贴图。
+
+### 反射探针混合
+
+混合是反射探针的一大特性，混合能够使反光物体进入一个新区域时，从原来的探针立方体贴图中淡出，淡入到新区域的探针。这种渐变可以使移动的物体在穿过两个反射探针的边界时，获得自然过渡的反射效果。
+
+### 盒投影（Box Projection）
+
+一般情况下，反射立方体贴图是假设为离任何物体无限远的，无论物体怎么转动，都能看见不同角度的立方体贴图，但是它无法表现出离反射环境更近还是更远。对于室内环境，房间内部的墙壁显然不是无限远的，当物体靠近墙面时，反射应该显得更大。
+
+使用盒投影可以从探针创建一个有限距离的反射贴图，使物体可以根据其与立方体贴图表面的距离显示出不同大小的反射。环境立方体贴图的大小取决于探针的作用区域，也就是它的Box Size属性。
+
+# 着色器（Shaders）
+
+## 比较URP和Built-In着色器
+
+```C
+SubShader {
+	Tags { "RenderPipeline" = "UniversalPipeline" }
+	Pass {
+		HLSLPROGRAM
+		...
+		ENDHLSL
+	}
+}
+```
+
+这是一个SubShader块的基础结构，URP着色器会使用`"RenderPipeline" = "UniversalPipeline"`标签声明子着色器所使用的渲染管线为URP，着色器代码使用的是HLSL语言，被`HLSLPROGRAM/ENDHLSL`所包裹。
+
+Unity会使用GPU支持的第一个子着色器进行执行，如果没有找到使用`UniversalPipeline`的着色器时，就会渲染洋红色的错误着色器。
+
+## 自定义着色器（Custom Shaders）
+
+*通过Create>Shader>Unlit Shader创建自定义Shader得到的是不兼容SRP Batcher的内置渲染管线Shader模板。*
+
+# 管线回调（Pipeline callbacks）
+
+SRP的一大特性是可以使用C#脚本在渲染过程的任何阶段添加代码，能够注入脚本的阶段包括：
+
+- Rendering shadows
+- Rendering prepasses
+- Rendering G-buffer
+- Rendering deferred lights
+- Rendering opaques
+- Rendering Skybox
+- Rendering transparents
+- Rendering post-processing
+
+可以在Universal Renderer Data的Inspector中通过Add Renderer Feature选项将脚本注入到渲染流程中。
+
+## Render Objects
+
+游戏里的一个普遍问题是角色消失在环境物体背后时会丢失视野，一个解决办法是当环境模型出现在角色与摄像机之间时，显示角色的轮廓。
+
+1. 首先需要创建一个角色被遮挡时使用的材质，使用Lit或Unlit着色器，设置Base Map颜色
+2. 为了避免不必要地重复渲染角色，需要将角色放置在一个特殊的层级（*SeeBehind*）
+3. 在Renderer Data中，将*SeeBehind*层级从**Opaque Layer Mask**中排除
+4. 点击Add Renderer Feature添加一个Render Objects
+5. 设置其名字以及执行时机（AfterRenderingOpaques） ，将**LayerMask**设置为*SeeBehind*（角色所在的层级），**Override Mode**为设置为Material，选择第一步创建的材质，将**Depth Test**设置为Greater，让该通道只在正在渲染的像素深度大于当前深度缓冲区中存储的值时进行渲染。
+6. 再添加一个Render Objects，用于渲染不被遮挡的角色，**Event**设置为AfterRenderingOpaques，将**LayerMask**设置为*SeeBehind*（角色所在的层级）
+
+## 渲染图系统（Render Graph system）
+
+使用渲染图系统可以用一种易维护和模块化的方式来创建自定义的SRP，**渲染图**是对自定义SRP渲染通道的高层表示，明确地声明了渲染管线在多个渲染通道之间如何使用资源。
+
+以这种方式描述渲染通道有两个好处：简化渲染管线的配置，使渲染图系统高效管理渲染管线的各个部分，提高运行时性能。
+
+### 主要原则
+
+- 不再直接操作资源，而是使用渲染图系统特定的句柄。渲染图管理的资源类型包括RTHandles，ComputeBuffers和RendererLists。
+- 实际的资源只能在渲染通道的执行代码中被访问
+- 需要明确声明各个渲染通道的资源使用情况（读取/写入）
+- 渲染图不会保留上一次执行过程中创建的资源，对于需要持久化的资源，可以在渲染图外部创建它们，但是渲染图不会追踪其依赖关系以及管理其生命周期
+- 渲染图大多数将RTHandles用于纹理资源，这对于编写着色器和设置它们的方式有重要影响
+
+### 资源管理
+
+渲染图系统会通过整个帧的高层表示来推算每个资源的生命周期。
+
+当你使用RenderGraph API创建资源时，渲染图系统会先返回表示该资源的一个句柄，直到首个使用该资源的渲染通道需要对资源写入时，才会真正地将资源创建出来。同样，在最后一个需要读取资源的通道执行完成后，才会将资源的内存进行释放。
+
+这样，渲染图系统就能根据你在渲染通道中的资源声明，以最高效的方式来复用内存。如果渲染图系统没有执行需要一个特定资源的通道，那么系统就不会为资源分配内存。
+
+### 渲染图执行过程
+
+每一帧渲染图都会从头开始完整地执行这三个步骤：
+
+- 配置（Setup）：配置渲染通道。声明需要执行的渲染通道以及每个通道所使用的资源
+- 编译（Compilation）：编译渲染图。渲染图系统会剔除掉产生无用输出的渲染通道，计算资源的生命周期
+- 执行（Execution）：执行渲染图。按声明顺序执行渲染图，在渲染通道之间创建或释放资源
+
+# 后处理（Post-processing）
+
+URP通过**Volume**框架来添加后处理效果，Unity6增加了默认Volume，在Project Settings>Graphics>Volume中可以找到，默认Volume会影响整个项目，但是可以被场景中的Volume所覆盖。URP资产中也有一个Volume设置，同样可以被场景中的Volume覆盖。
+
+Volume可以是**全局**或**局部**的，全局Volume作用于整个场景，局部Volume作用于一个碰撞盒范围。
+
+## 使用URP后处理框架
+
+1. 首先确认主摄像机开启了Post Processing选项
+2. 在Hierarchy窗口右键Create>Volume>Global Volume，创建一个全局Volume
+3. 在Volume组件的Inspector中，点击New创建新的Profile
+4. 点击Add Override添加需要的后处理效果
+
+## 添加局部Volume
+
+可以让摄像机在场景中移动时，触发不同的后处理配置，使用局部Volume就可以实现这种效果。
+
+1. 在Hierarchy窗口右键Create>Volume>Box Volume/Sphere Volume/Convex Mesh Volume，根据实际需求选择不同形状的Volume
+2. 在Volume组件的Inspector中创建配置文件，另外还有一些设置：
+	1. 混合距离（Blend Distance）：开始混合/淡入的距离（相对碰撞盒位置），在碰撞盒边缘是完全淡入淡出的状态
+	2. 权重（Weight）：控制后处理效果的程度
+	3. 优先级（Priority）：当多个Volume同时影响场景时会根据优先级选择使用其中一个
+3. 移动Volume到合适的位置，调整其碰撞盒范围
+
+## URP中可用的后处理效果
+
+后处理效果会严重影响处理器性能，所以应仔细考虑这些效果在低端设备和移动设备上的使用。
+
+| 效果                          | 描述                            |
+| --------------------------- | ----------------------------- |
+| Bloom                       | 在超出预设亮度级别的像素周围添加发光            |
+| Channel Mixer               | 修改每一个输入颜色通道在整体混合上的影响          |
+| Chromatic Aberration        | 在图像明暗区域的边界上产生色变               |
+| Color Adjustments           | 对最终渲染图像的整体色调、亮度和对比度进行微调       |
+| Color Curves                | 对色调、饱和度和明度在特定范围上进行调整的高级方式     |
+| Color Lookup                | 使用一张查找纹理将每一个像素的颜色映射为新的值       |
+| Depth of Field              | 模拟摄像机镜头的聚焦特性                  |
+| Film Grain                  | 模拟胶片的随机光学纹理                   |
+| Lens Distortion             | 模拟真实摄像机镜头产生的图像畸变效果            |
+| Lift Gamma Gain             | 使用轨迹球调整图像不同区域的明暗度             |
+| Motion Blur                 | 模拟真实摄像机在拍摄移动快于曝光时间的物体时产生的模糊效果 |
+| Panini Projection           | 在宽阔视野下获得恰当的透视效果               |
+| Shadows Midtones Highlights | 分别调节阴影、中间色调和高光                |
+| Split Toning                | 对阴影和高光叠加不同的色调                 |
+| Tonemapping                 | 重新映射HDR值到新的范围                 |
+| Vignette                    | 暗化图像边缘                        |
+| White Balance               | 移除不真实的色偏，使物体显得和现实中一样白         |
+
+## 在代码中控制后处理
+
+```CS
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
+public class PPController : MonoBehaviour
+{
+	// Start is called before the first frame update
+	void Start()
+	{
+		Volume volume = GetComponent<Volume>();
+		Bloom bloom;
+		if (volume.profile.TryGet<Bloom>(out bloom))
+		{
+			bloom.intensity.value = 0;
+		}
+	}
+}
+```
+
+# 摄像机堆叠（Camera Stacking）
+
+在游戏中一个常见的需求是组合不同摄像机的镜头在同一个画面中，摄像机可以有不同的视野范围，不同的灯光和后处理效果。
+
+1. 创建一个新的摄像机，移除Audio Listener组件
+2. 在Camera组件的**Camera Settings**面板中，设置**Render Type**为Overlay
+3. 为新的摄像机及其渲染的物体创建新的层级，以*Overlay*为例
+4. 在Camera组件的**Rendering**面板中，设置Culling Mask为Overlay
+5. 将摄像机放到合适的位置，将其渲染的物体层级也设置为Overlay
+6. 设置主摄像机的**Culling Mask**，将Overlay移除
+7. 在主摄像机的Stack面板中，添加Overlay摄像机
+
+## 在代码中控制堆叠
+
+```CS
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+
+public class StackController : MonoBehaviour
+{
+	public Camera overlayCamera;
+	// Start is called before the first frame update
+	void Start()
+	{
+		Camera camera = GetComponent<Camera>();
+		var cameraData = camera.GetUniversalAdditionalCameraData();
+		cameraData.cameraStack.Remove(overlayCamera);
+	}
+}
+```
+
+# SubmitRenderRequest
+
+有时希望将游戏渲染到不同的地方，不只是玩家的屏幕，**SubmitRendeRequest** API就是为此设计的。
+
+## 屏幕截图
+
+将这个脚本挂在主摄像机上，点击屏幕上的按钮就可以将游戏画面渲染到一张离屏的渲染纹理中。
+
+脚本首先在Start回调中创建了一个**RenderTexture**，当用户按下“Render Quest”按钮后，`RenderQuest`函数就会被调用。
+
+在`RenderQuest`函数中，首先创建一个`RenderPipeline.StandardRequest`实例，检查当前渲染管线是否支持**RenderQuest**框架，如果支持，就将在Start回调中创建的RenderTexutre作为Request对象的目标，并使用`RenderPipeline.SubmitRenderRequest`开始渲染。
+
+渲染结果会经过`ToTexture2D`方法转为Texture2D对象，然后使用Texture2D实例的`EncodeToPNG`方法得到字节数组，存储到文件中。
+
+```CS
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+[RequireComponent(typeof(Camera))]
+public class StandardRenderRequest : MonoBehaviour
+{
+	[SerializeField] RenderTexture texture2D;
+	
+	private void Start()
+	{
+		texture2D = new RenderTexture(1920, 1080, 24);
+	}
+	
+	// When user clicks on GUI button,
+	// Render Requests are sent with various output textures to render given frame
+	private void OnGUI()
+	{
+		GUILayout.BeginVertical();
+		if (GUILayout.Button(“Render Request”))
+		{
+		RenderRequest();
+		}
+		GUILayout.EndVertical();
+	}
+
+	void RenderRequest()
+	{
+		Camera cam = GetComponent<Camera>();
+		RenderPipeline.StandardRequest request = new RenderPipeline.StandardRequest();
+		if (RenderPipeline.SupportsRenderRequest(cam, request))
+		{
+			// 2D Texture
+			request.destination = texture2D;
+			RenderPipeline.SubmitRenderRequest(cam, request);
+			SaveTexture(ToTexture2D(texture2D));
+		}
+	}
+
+	void SaveTexture(Texture2D texture)
+	{
+		byte[] bytes = texture.EncodeToPNG();
+		var dirPath = Application.dataPath + “/RenderOutput”;
+		if (!System.IO.Directory.Exists(dirPath))
+		{
+			System.IO.Directory.CreateDirectory(dirPath);
+		}
+		System.IO.File.WriteAllBytes(dirPath + “/R_” + Random.Range(0, 1) + “.png”, bytes);
+		Debug.Log(bytes.Length / 1024 + “Kb was saved as: “ + dirPath);
+		#if UNITY_EDITOR
+		UnityEditor.AssetDatabase.Refresh();
+		#endif
+	}
+
+	Texture2D ToTexture2D(RenderTexture rTex)
+	{
+		Texture2D tex = new Texture2D(rTex.width, rTex.height, TextureFormat.RGB24, false);
+		RenderTexture.active = rTex;
+		tex.ReadPixels(new Rect(0, 0, rTex.width, rTex.height), 0, 0);
+		tex.Apply();
+		Destroy(tex);//prevents memory leak
+		return tex;
+	}
+```
+
