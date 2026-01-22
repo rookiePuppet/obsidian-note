@@ -31,6 +31,19 @@ Unity支持大多数的图像文件类型，如PNG、BMP、TIF、TGA、JPG和PSD
 
 大多数UI图形资产会被渲染在屏幕空间，而不受Unity的世界缩放影响（一单位代表3D空间中的一立方米），UI Toolkit会管理这些图形的缩放。精灵的PPU（Pixels Per Unit）影响着它们在UI上的大小，例如，如果你的精灵在每个网格单元上有128个像素，那就把PPU设置为128。
 
-精灵是映射在平面矩形3D网格上的2D纹理，在导入时默认使用*Mesh Type：Tight*设置，使网格紧贴着精灵上非透明像素的边缘。
+精灵是映射在平面矩形3D网格上的2D纹理，在导入时默认使用**Mesh Type**：*Tight*设置，使网格紧贴着精灵上非透明像素的边缘，这样可以减少重绘（Overdraw）。可以在Sprite Editor的Outline部分调整优化该网格。
+
+> [!NOTE] 重绘 Overdraw
+> 由于透明区域的重叠，GPU可能在一帧内对同一个像素重复多次绘制。
+
+**Sprite Modes**包括以下选项：
+
+- Single：默认模式，当纹理源文件中仅包含单个图片元素时选择
+- Multiple：当纹理源文件中包含多个图片元素时选择。在Sprite Editor中设置每个元素的位置，以便将纹理分割为多个子图片，然后在UI Toolkit中就可以分别使用它们。
+- Polygon：适用于圆形或规则多边形，该模式可帮助设置贴合图像形状的边缘。
+
+## 渲染纹理（Render Texture）资产
+
+
 
 
