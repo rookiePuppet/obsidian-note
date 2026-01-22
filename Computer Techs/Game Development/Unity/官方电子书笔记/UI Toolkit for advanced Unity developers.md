@@ -44,6 +44,6 @@ Unity支持大多数的图像文件类型，如PNG、BMP、TIF、TGA、JPG和PSD
 
 ## 渲染纹理（Render Texture）资产
 
-
+渲染纹理是每帧都会更新的摄像机视图的快照纹理，通过Assets>Create>Rendering创建，在摄像机的Output菜单下引用
 
 
