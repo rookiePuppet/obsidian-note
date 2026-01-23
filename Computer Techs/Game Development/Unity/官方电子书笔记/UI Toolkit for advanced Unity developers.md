@@ -113,4 +113,5 @@ UI Toolkit基于Yoga定位UI元素，Yoga是实现了Flexbox的一个子集的HT
 
 ## 可视元素（Visual elements）
 
-在UI Toolkit中，每个界面最基本的组成元素叫做**Visual Element**，Visual Element是所有UI Toolkit元素的基类。一个由多个可视元素组成的UI层次结构叫做**Visual Tree**。
+在UI Toolkit中，每个界面最基本的组成元素叫做**Visual Element**，Visual Element是所有UI Toolkit元素的基类。一个由多个可视元素组成的UI层次结构叫做**Visual Tree**。视觉元素的布局、样式和层级相关信息会被存储到UXML文件中。
+
