@@ -105,4 +105,12 @@ Dynamic Atlas在编辑器和运行时均可使用，对于动态生成的UI元�
 
 ## 响应式布局：Flexbox
 
-UI Toolkit基于Yoga定位UI元素，Yoga是实现了Flexbox的一个子集的HTML/CSS布局引擎。
+UI Toolkit基于Yoga定位UI元素，Yoga是实现了Flexbox的一个子集的HTML/CSS布局引擎。Flexbox是一种将按行列组织元素的方法，有如下优势：
+
+- 响应式UI：Flexbox将一切组织进一个由盒子或容器组成的网络，可以将元素以父级或子级方式嵌套排列，或利用简单的规则在空间中分散排列。响应式布局可以适应不同分辨率的屏幕，针对多个平台开发时更加容易。
+- 有组织的复杂性：样式是控制UI呈现效果的简单规则，一个样式可以同时被成百上千个元素所使用，并在整个UI上立即响应更改。这样可以将UI设计的重心放在一致、可复用的样式上，而不是专注于单个元素。
+- 逻辑与设计解耦：UI布局和样式不与代码耦合，有利于设计师和开发者并行工作。
+
+## 可视元素（Visual elements）
+
+在UI Toolkit中，每个界面最基本的组成元素叫做**Visual Element**，Visual Element是所有UI Toolkit元素的基类。一个由多个可视元素组成的UI层次结构叫做**Visual Tree**。
