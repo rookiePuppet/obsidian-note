@@ -92,3 +92,17 @@ Dynamic Atlas在编辑器和运行时均可使用，对于动态生成的UI元�
 - 使用2D PSD Importer将PSD直接导入Unity，每次更改保存PSD文件，在Unity中都会立即刷新。
 - 利用预设（**Preset**）功能将导入流程自动化，避免每次添加图像资源时都要手动修改资源设置。
 - 如果需要更深度的自动化流程，例如运行时检查，或大规模的设置修改，可以使用**Asset PostProcessor** API。
+
+# 布局
+
+## 核心运行时组件
+
+要将UI Toolkit元素渲染到Game View中，必须要让一个GameObject挂载**UI Document**组件，引用一个**Panel Settings**资产和**Visual Tree（UXML）**资产。
+
+**UI Document**组件定义了要显示的UXML，并附带一个默认的Panel Settings，**Sort Order**决定了使用相同Panel Settings的UI Document之间的显示顺序。
+
+**Panel Settings**定义UI Document组件在运行时如何被实例化和显示，可以给UI设置不同Panel Settings来实现不同样式。
+
+## 响应式布局：Flexbox
+
+UI Toolkit基于Yoga定位UI元素，Yoga是实现了Flexbox的一个子集的HTML/CSS布局引擎。
