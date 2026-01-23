@@ -42,8 +42,50 @@ Unity支持大多数的图像文件类型，如PNG、BMP、TIF、TGA、JPG和PSD
 - Multiple：当纹理源文件中包含多个图片元素时选择。在Sprite Editor中设置每个元素的位置，以便将纹理分割为多个子图片，然后在UI Toolkit中就可以分别使用它们。
 - Polygon：适用于圆形或规则多边形，该模式可帮助设置贴合图像形状的边缘。
 
-## 渲染纹理（Render Texture）资产
+## 渲染纹理（Render Texture）
 
-渲染纹理是每帧都会更新的摄像机视图的快照纹理，通过Assets>Create>Rendering创建，在摄像机的Output菜单下引用。在UI Toolkit中可以用这些纹理来显示小地图、角色选择界面和其他需要集成到UI中的元素。
+渲染纹理是每帧都会更新的摄像机视图的快照纹理，通过Assets>Create>Rendering创建，在摄像机的Output菜单下引用。
 
+在UI Toolkit中可以用这些纹理来显示小地图、角色选择界面和其他需要集成到UI中的元素。反过来，还可以将UI Toolkit的界面渲染到渲染纹理中，再应用到3D模型使用的材质上。
 
+## 2D PSD Importer
+
+PSD文件常用于在单个文件中分层存储多张图片，安装2D PSD Importer包之后可以直接导入Unity中，而不需要将每一层分别导出为独立的文件。
+
+作为UI资源使用的图片，需要在Character Rig栏下将*Use as Rig*选项取消，Rig用于2D角色骨骼动画，对于UI来说是不必要的。
+
+## 矢量图像（Vector Images）
+
+矢量图像的支持仍在开发中，目前可通过安装Vector Graphics包测试使用，在Generated Asset Type设置中，选择*UI Toolkit Vector Image*即可在UI Toolkit中使用。
+
+目前SVG文件是切分成多边形进行渲染的，不能发挥矢量图像的优势。当图像放大时，可以看到多边形边界，而且UI Toolkit暂时还不能使用抗锯齿。
+
+## 字体（Fonts）
+
+- Font：标准的字体格式，例如TTF或OTF，支持向后兼容，在后台会自动转换为FontAsset。
+- FontAsset：推荐使用的格式，允许对字距或基线进行微调，而无需修改原始字体资源，对于字体高度风格化的游戏很有用。对图集创建提供精确的控制，包括文字集、分辨率和图集填充设置（atlas population options），这些设置可以帮助降低内存使用，特别是对于包含大量文字的Unicode字体。
+
+## 纹理打包器
+
+将多个2D图形组合进同一张纹理是减少Draw Call和提升内存使用效率的优化手段，UI Toolkit支持以下两种图集系统。
+
+### Sprite Atlas
+
+Sprite Atlas是用于精灵的图集工具，也可用于UI图形，它会自动将同一个文件夹中的资源（精灵、法线/遮罩贴图）打包成图集，一般用于编辑器中，而非运行时。
+
+### Dynamic Atlas
+
+对于没有被打包到精灵图集中的UI图形，在一个预处理通道期间也会被UI Toolkit的Dynamic Atlas特性自动打包。
+
+被Visual Element引用的图像会根据UI Document的Panel Settings设置的标准进行图集打包，例如，可以设置纳入图集的最小或最大纹理尺寸，或者对图像过滤。在UI Toolkit Debugger的Texture Atlas Viewer中可以预览生成的图集。
+
+Dynamic Atlas在编辑器和运行时均可使用，对于动态生成的UI元素很有用。
+
+---
+
+一些好的实践做法：
+
+- 在制作原型图时就确定好最高的目标分辨率，避免之后反复修改
+- 避免在位图图像制作完成后放大它们，这会导致像素化和模糊，而是从支持的最高分辨率开始，一步一步地缩小。
+- 对于矢量图形，虽然随时调整大小不会有什么问题，但还是要根据参考分辨率进行设计，使每一个资源有正确的相对大小，例如保持描边粗细统一。
+- 如果图像分辨率低于需求，尝试使用2D Enhancers，以及Sprite Editor中基于AI的放大功能。
