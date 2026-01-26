@@ -136,9 +136,67 @@ Width和Height参数决定了元素的尺寸，Max Width和Max Height限制元�
 
 Flex设置可以在使用相对定位时影响元素的尺寸。
 
-Basis指的是在任何Grow或Shrink比例操作发生前，元素的默认宽高：
+**Basis**指在任何Grow或Shrink比例操作发生前，元素的默认宽高：
 
 - Grow=1时，元素会占据父容器所有纵向和横向空间，Grow=0.5时则会占据一半空间
 - Grow=0时，元素不会扩展并超出其基础大小
 - Shrink=1时，元素会尽可能收缩，以适应父容器的可用空间
 - Shrink=0时，元素不会收缩，可能会发生溢出
+
+> [!NOTE] 计算元素尺寸
+> 当使用相对定位时，布局引擎结合Size和Flexbox设置决定元素大小。
+> 1. 根据Width和Height属性计算元素尺寸
+> 2. 检查父容器是否有额外的可用空间，或子元素是否已经溢出
+> 3. 如果有额外空间，查找Flex/Grow为非零值的元素，按比例扩展子元素尺寸
+> 4. 如果子元素溢出，查找Flex/Shrink为非零值的元素，按比例收缩子元素尺寸
+> 5. 考虑其他影响元素尺寸的属性，例如Min Width，Flex Basis等
+
+Direction决定子元素在父容器内部如何排列，位于越高层级的子元素越先出现。
+
+Wrap决定子元素是否需要尝试适应单行或单列布局（No Wrap），否则将溢出的元素排列到新的行列上（Wrap或Wrap reverse）。
+
+## Align设置
+
+Align设置决定子元素在排列时如何对齐父元素。设置父元素的**Align Items**，让子元素对齐首端（start）、中心（center）或尾端（end）进行排列，这些选项会影响交叉轴（垂直于主轴Flex Direction）。
+
+**Stretch**选项也会影响交叉轴，但是Size中的Min和Max值会限制其效果。同时，**Auto**选项表示布局引擎可以根据其他参数动态选择其他一个选项，但是建议只在特殊情况下使用Auto选项。
+
+**Justify Content**决定布局引擎如何将父容器中的元素分隔开。
+
+## Margin和Padding
+
+Margin和Padding用于设置元素周围的空白空间，Unity使用的是标准CSS盒子模型的一个变体。
+
+- Content Space（内容空间）：容纳视觉元素的空间
+- Padding（内边距）：在边框内部，围绕主空间的空白区域
+- Border（边框）：内边距和外边距之间的边界，厚度向内扩展，可以设置颜色和圆角
+- Margin（外边距）：在边框外部，围绕主空间的空白区域
+
+## 背景和图像
+
+在UI Toolkit中，任何视觉元素都可以显示一张图像，只需要将background属性设置为一张纹理或精灵即可，还可以填入颜色改变元素的外观。
+
+## 可变或固定测量单位
+
+在UI Builder中会遇到决定元素间距和尺寸的四种参数：
+
+- Auto：默认选项，布局引擎根据父元素和子元素的信息计算数值
+- Percentage：相当于容器的一个百分比单位，随着父元素的宽高动态改变
+- Pixels：像素单位，在希望元素大小固定时有用
+- Initial：将属性设置回默认状态（Unity自己的默认样式规则），忽略当前样式
+
+如果希望对整个UI应用一个缩放规则，可以设置Panel Settings的Scale Mode参数：
+
+- Constant Pixel Size：将元素保持在一个固定的像素大小，不受屏幕大小影响
+- Constant Physical Size：将元素保持在各种屏幕上的相同物理大小，当实际的屏幕DPI不同于参考DPI时，基于参考DPI缩放UI元素
+- Scale with Screen Size：根据分辨率动态调整元素尺寸。Screen Match Mode决定当缩放时优先考虑宽或高还是两者的混合；Reference Resolution设置UI的基础尺寸。
+
+## UI Builder中的覆盖属性
+
+被修改的属性在Inspector中会以粗体和白线高亮显示，表示它们现在覆盖了默认值或USS中的值，这种行为也叫做“内联样式”。
+
+如果一个值不需要修改，最好保持其为默认状态。
+
+## 将UXML作为模板
+
+UXML文件可以像预制体一样使用，在任意UXML右键选择Create Template即可创建模板，之后就可以将模板添加到任何的视觉元素中或通过代码实例化，模板可以在Project视图下找到。
