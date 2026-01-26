@@ -111,7 +111,9 @@ UI Toolkit基于Yoga定位UI元素，Yoga是实现了Flexbox的一个子集的HT
 - 有组织的复杂性：样式是控制UI呈现效果的简单规则，一个样式可以同时被成百上千个元素所使用，并在整个UI上立即响应更改。这样可以将UI设计的重心放在一致、可复用的样式上，而不是专注于单个元素。
 - 逻辑与设计解耦：UI布局和样式不与代码耦合，有利于设计师和开发者并行工作。
 
-## 可视元素（Visual elements）
+## 视觉元素（Visual elements）
 
 在UI Toolkit中，每个界面最基本的组成元素叫做**Visual Element**，Visual Element是所有UI Toolkit元素的基类。一个由多个可视元素组成的UI层次结构叫做**Visual Tree**。视觉元素的布局、样式和层级相关信息会被存储到UXML文件中。
+
+## 定位视觉元素
 
