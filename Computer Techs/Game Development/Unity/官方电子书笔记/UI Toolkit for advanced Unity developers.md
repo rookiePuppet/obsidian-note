@@ -391,6 +391,14 @@ Unity6引入了运行时数据绑定系统，提供一种结构化的方式来�
 
 以下是几个重要概念：
 
-- Data source（数据源）：持有UIbang'di
+- Data source（数据源）：持有UI绑定数据的对象
+- Data source path（数据源路径）：UI元素连接到数据源的属性或字段
+- Binding mode（绑定模式）：控制数据流单向/双向流动
+
+## 准备数据源
+
+任何C#对象都可以作为数据源，包括ScriptableObjects，MonoBehaviours，或自定义的C#对象。使用结构体作为数据源可以提高性能，因为其内存分配更加qing'lian
+
+
 
 
