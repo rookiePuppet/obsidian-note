@@ -255,3 +255,53 @@ USS选择器通过以下方式匹配元素：
 对于视觉元素来说，由于伪类可以可以独立定义样式规则，动画不需要额外代码。当一个伪类触发了样式变化，所有定义的过渡会自动处理变化动画。
 
 伪类是预定义的，不能自己创造新的伪类。
+
+## 按需切换样式
+
+使用UI Element API可以在代码中更换样式，例如根据角色稀有度来改变样式，可以使用`RemoveFromClassList`和`AddToClassList`方法。
+
+```CS
+if (character.rarity == RarityType.Legendary)
+{
+	visualElement.RemoveFromClassList("common");
+	visualElement.AddToClassList("legendary");
+}
+```
+
+另外，可以通过触发`:active`或`:inactive`伪类（根据元素的enabled状态），在改变状态时进行USS过渡。
+
+## 主题
+
+如果想根据季节变化调整UI或提供不同颜色的样式，使用Theme Style Sheets（TSS）可以简化这个过程。
+
+TSS是一种操作像普通USS文件的资产文件，由USS选择器和属性、变量设置组成，提供一个自定义主题的切入点。
+
+根据已有主题创建新主题的工作流可以是这样：
+
+1. 创建新的TSS，添加要继承的主题以及新的USS文件
+2. 在UI Builder > StyleSheets中，点击Add Existing USS，选择新主题使用的USS
+3. 复制要覆盖的选择器到新主题的USS列表，选择Set as Active USS
+4. 在新的USS中编辑选择器
+
+在运行时，在PanelSettings的Theme Style Sheet处引用新主题。
+
+# 命名规范
+
+在UI Toolkit中需要使用字符串标识符来查找视觉元素和USS，因此使用一套命名的标准有利于代码的可读性并减少错误。
+
+Block Element Modifier(BEM)是在现代网站开发中广泛使用的一种命名规范，在UI Toolkit中也推荐使用它。
+
+BEM名称可以描述一个元素是做什么的，出现在哪里，以及如何与周围的其他元素关联，BEM有三个主要成分：block-name__element-name--modifier-name，例如navbar-menu__shop-button--small。
+
+每一部分可以由拉丁字母、数字和短线组成，并由双下划线或双短线连接。
+
+- block-name：代表高层组件，像是一个navbar-menu、玩家状态，任何明确有意义的UI组件。除非是不属于任何特定模块的通用组件，该部分可以省略，例如button-small
+- element-name：代表一个模块的子元素或其中一部分元素，这些元素依赖于模块而存在，例如shop-button和navbar-menu__shop-button是位于不同模块中的
+- modifier-name：代表模块或元素的一种变体或状态，可以是当按钮被按下，文本框选项被选择等
+
+BEM命名的例子：
+
+- menu__button-home
+- menu__button-shop
+- navbar-menu__shop-button--small
+- navbar-menu__shop-button--large
