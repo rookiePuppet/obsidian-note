@@ -369,3 +369,10 @@ UI Toolkit使用一种基于TextMeshPro的字体渲染技术，叫做TextCore，
 2. 将精灵资产关联到Text Settings，保存并进入Play Mode，更新设置
 3. 使用富文本标签添加精灵，`<sprite index=0> or <sprite name="name">`
 
+### 文本样式表
+
+如果你的应用需要处理大量我呢本，可以考虑通过Assets>Text Core>Text Stylesheet创建一个文本样式表来管理格式，这样可以用富文本标签`<style>`来设置自定义的文本样式。
+
+# 数据绑定
+
+本质上，用户界面就是玩家与驱动游戏的数据之间的连接，是玩家与游戏内部状态和逻辑交互的首要方式。
