@@ -289,9 +289,9 @@ TSS是一种操作像普通USS文件的资产文件，由USS选择器和属性�
 
 在UI Toolkit中需要使用字符串标识符来查找视觉元素和USS，因此使用一套命名的标准有利于代码的可读性并减少错误。
 
-Block Element Modifier(BEM)是在现代网站开发中广泛使用的一种命名规范，在UI Toolkit中也推荐使用它。
+**Block Element Modifier**(BEM)是在现代网站开发中广泛使用的一种命名规范，在UI Toolkit中也推荐使用它。
 
-BEM名称可以描述一个元素是做什么的，出现在哪里，以及如何与周围的其他元素关联，BEM有三个主要成分：block-name__element-name--modifier-name，例如navbar-menu__shop-button--small。
+BEM名称可以描述一个元素是做什么的，出现在哪里，以及如何与周围的其他元素关联，BEM有三个主要成分：**block-name__element-name--modifier-name**，例如navbar-menu__shop-button--small。
 
 每一部分可以由拉丁字母、数字和短线组成，并由双下划线或双短线连接。
 
@@ -305,3 +305,21 @@ BEM命名的例子：
 - menu__button-shop
 - navbar-menu__shop-button--small
 - navbar-menu__shop-button--large
+
+# 文本
+
+UI Toolkit使用一种基于TextMeshPro的字体渲染技术，叫做TextCore，它能在各种分辨率下渲染出清晰的文本并提供高级的样式功能。TextCore具备有向距离场字体渲染的优势，即使经过缩放或其他变换，也能生成锐利的文本。
+
+## 源字体文件
+
+常见的字体格式如TTF和OTF，在Unity中需要转换为字体资产才能够使用。字体资产是一种Unity专用的资源，包含渲染字体所需的数据，包括字形、字体度量参数和渲染设置（如大小、粗细和样式）。
+
+选中源字体文件，在右键菜单中选择Create>Text Core > Font Asset > SDF即可创建相关字体资产。
+
+## 字体资产设置
+
+将源字体文件转换为字体资产后，可以进行设置以控制字体的生成。以下是一些关键选项：
+
+- Face Info：间距和缩放，用于对源字体进行微调
+- Generation Settings：包括源字体、字体样式、图集生成模式和渲染模式等基本配置
+- 
