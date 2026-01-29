@@ -345,3 +345,27 @@ UI Toolkit使用一种基于TextMeshPro的字体渲染技术，叫做TextCore，
 
 富文本标签可以改变文本的颜色或对齐方式，而无需修改字体属性或样式，可用于在视觉上强调你所想要传达的内容。
 
+### 渐变
+
+在UI Toolkit中使用`<gradient>`标签来应用渐变，以下是操作步骤：
+
+1. 通过Create>Text Core>Gradient Color创建渐变色资产，文件需要放在Resources文件夹或其子文件夹
+2. 创建一个Text Settings资产，在Panel Settings中引用，填写渐变色资产所在文件夹路径
+3. 在UI Builder中开启Rich Text，添加富文本标签，如`<color=white><gradient="testColorGradient">Gradient Test</gradient></color>`
+
+### 精灵资产和表情符号
+
+还可以通过富文本标签在文本中添加表情符号，这需要使用和渐变色资产类似的精灵资产。当导入多个精灵时，将它们打包到一张图集以减少绘制调用，确保图集的分辨率设置对于目标平台是适合的。
+
+按下列步骤导入精灵：
+
+1. 导入包含表情或图标的精灵或PSD文件
+2. 将图像切分成多个精灵，通过Create>Text Core>Sprite Asset从文件创建精灵资产，放置在Resources文件夹中
+3. 可以调整Face Info和自定义每一个“字形”的外观和名称
+
+在UI Toolkit中使用精灵资产：
+
+1. 选择UI Document的Panel Settings，打开Text Settings资产
+2. 将精灵资产关联到Text Settings，保存并进入Play Mode，更新设置
+3. 使用富文本标签添加精灵，`<sprite index=0> or <sprite name="name">`
+
