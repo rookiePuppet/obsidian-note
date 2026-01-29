@@ -397,7 +397,13 @@ Unity6引入了运行时数据绑定系统，提供一种结构化的方式来�
 
 ## 准备数据源
 
-任何C#对象都可以作为数据源，包括ScriptableObjects，MonoBehaviours，或自定义的C#对象。使用结构体作为数据源可以提高性能，因为其内存分配更加qing'lian
+任何C#对象都可以作为数据源，包括ScriptableObjects，MonoBehaviours，或自定义的C#对象。使用结构体作为数据源可以提高性能，因为其内存分配更加轻量化，能减少内存垃圾。数据绑定可以通过代码或Inspector完成。
+
+### 使用CreateProperty特性
+
+为了将属性提供给绑定使用，UI Toolkit需要依靠由Unity Properties模块生成的属性包（property bags），属性包定义了数据源中哪一些属性能够被UI绑定所访问。
+
+使用`CreateProperty`特性，可以让属性可被绑定。
 
 
 
