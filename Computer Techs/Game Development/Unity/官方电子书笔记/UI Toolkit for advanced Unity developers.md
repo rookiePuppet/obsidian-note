@@ -424,7 +424,21 @@ public int Value
 
 数据源路径用于指定你想要连接到UI元素的数据源中的属性或字段，例如数据源中有一个“health”属性，路径会直接指向该属性。
 
-- 在UI Builder中：选择某个元素，在Inspector中从
+#### 在UI Builder中
+
+选择某个元素，在Inspector中从某个属性的左侧三点菜单中使用Add Binding，引用数据源对象，例如一个ScriptableObject，然后指定数据源路径。
+
+#### 在UXML中
+
+通过UI Builder设置数据绑定后，会自动生成相应的UXML。你也可以在文本编辑器中手动添加和数据源路径。
+
+```XML
+<Bindings>
+	<ui:DataBinding property="text" data-source-path="Health"/>
+</Bindings>
+```
+
+#### 
 
 
 
