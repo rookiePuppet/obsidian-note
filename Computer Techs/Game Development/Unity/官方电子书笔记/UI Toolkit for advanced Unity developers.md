@@ -381,10 +381,16 @@ UI Toolkit使用一种基于TextMeshPro的字体渲染技术，叫做TextCore，
 
 在Unity6中的运行时数据绑定提供一种简洁高效的解决方案，它将应用数据直接与UI元素连接，确保一方改变能自动反映给另一方。
 
-Model-view-viewmodel（MVVM）架构在view和model之间添加了一层表示逻辑，viewmodel扮演一个中介者，将model中的数据进行格式化后提供给view展示。
+Model-view-viewmodel（MVVM）架构在view和model之间添加了一层表示逻辑，viewmodel扮演一个中介者，将model中的数据进行格式化后提供给view展示。例如，一个生命条能够自动展示玩家的生命值，一个分数标签能实时更新，而无需额外脚本逻辑或手动处理事件。
 
 ![[Pasted image 20260129155050.png]]
 
+## 数据绑定概念
 
+Unity6引入了运行时数据绑定系统，提供一种结构化的方式来连接UI元素和应用数据。要将一个元素的属性绑定到数据源，需要创建一个**DataBinding**实例。
+
+以下是几个重要概念：
+
+- Data source（数据源）：持有UIbang'di
 
 
