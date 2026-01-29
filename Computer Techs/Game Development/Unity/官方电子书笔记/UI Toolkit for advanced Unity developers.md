@@ -438,8 +438,22 @@ public int Value
 </Bindings>
 ```
 
-#### 
+#### 使用C\#
 
+可以在脚本中实例化或引用数据源对象，将其赋值给根元素的dataSource属性，再使用dataSourcePath指定绑定的属性。
 
+```CS
+var label = new Label();
+var parentData = ScriptableObject.CreateInstance<PlayerDataSO>();
+playerData.Health = 100;
+
+label.SetBinding("text", new DataBinding()
+{
+	dataSource = playerData,
+	dataSourcePath = new PropertyPath(nameof(PlayerDataSO.Health)),
+});
+```
+
+注意：
 
 
