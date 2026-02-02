@@ -575,3 +575,84 @@ public class LocalizationDemo : MonoBehaviour
 
 在某些情况下，你可能需要在语言改变时执行一些额外的操作，这时就可以监听`LocalizationSettings` API中的`SelectedLocaleChanged`事件。
 
+## 文本预处理
+
+在某些情况下，直接将UI元素和`LocalizedString`绑定可能不太方便，例如特定元素在显示本地化文本之前需要额外的格式化或修改。
+
+### GetLocalizedString
+
+`GetLocalizedString`方法可以在运行时将`LocalizedString`转换为一个标准字符串，这可以让你在显示文本之前自定义格式，比如添加前缀或组合字符串。
+
+```CS
+[SerializeField] int m_PlayerLevel = 1;
+LocalizedString m_LevelMessage = new LocalizedString("My_Table", "My_Entry");
+
+// A property that retrieves the localized string and replaces the placeholder {0} with the player’s level
+[CreateProperty] public string LevelMessage =>
+m_LevelMessage.GetLocalizedString(m_PlayerLevel);
+```
+
+### 使用`StringChanged`事件
+
+`StringChanged`事件在LocalizedString每次更新（语言改变）时触发，使用它可以在渲染之前修改文本。
+
+```CS
+LocalizedString localizedString = new LocalizedString("My_Table", "My_Entry");
+localizedString.StringChanged += OnLocalizedStringChanged;
+
+void OnLocalizedStringChanged(string value)
+{
+	// Example: Add a prefix based on certain conditions
+	string processedString = $"[Prefix] {value}";
+	// Update the UI element with the processed string
+	m_TextLabel.text = processedString;
+}
+```
+
+### 动态UI控件
+
+当然，预处理LocalizedString不只限于基本的文本框，在应对Smart String无法处理的复杂属性或UI结构时也非常有用。
+
+例如，一个下拉框包含一个字符串选项列表，预处理可以动态地本地化这个选项列表。
+
+```CS
+[SerializeField] LocalizedString m_Choice1LocalizedString;
+[SerializeField] LocalizedString m_Choice2LocalizedString;
+[SerializeField] LocalizedString m_Choice3LocalizedString;
+[SerializeField] LocalizedString m_Choice4LocalizedString;
+
+public void Initialize(VisualElement root)
+{
+	m_DropdownField = root.Q<DropdownField>("dropdown__field");
+	m_Choice1LocalizedString.StringChanged += UpdateDropdownChoices;
+	m_Choice2LocalizedString.StringChanged += UpdateDropdownChoices;
+	
+	// … register other choices
+	
+	// Initial population
+	UpdateDropdownChoices(null);
+}
+
+void UpdateDropdownChoices(string value)
+{
+	if (m_DropdownField == null)
+		return;
+	
+	// Save the current selection
+	int selection = m_DropdownField.index;
+	
+	// Remove previous choices
+	m_DropdownField.choices.Clear();
+	
+	// Add current localized values
+	m_DropdownField.choices.Add(m_Choice1LocalizedString.GetLocalizedString());
+	m_DropdownField.choices.Add(m_Choice2LocalizedString.GetLocalizedString());
+	
+	// … Add other choices
+	
+	// Restore selected index and value
+	m_DropdownField.index = selection;
+	m_DropdownField.SetValueWithoutNotify(m_DropdownField.choices[selection]);
+}
+```
+
