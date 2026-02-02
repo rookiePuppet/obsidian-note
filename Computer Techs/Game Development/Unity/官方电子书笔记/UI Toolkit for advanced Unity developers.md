@@ -656,3 +656,26 @@ void UpdateDropdownChoices(string value)
 }
 ```
 
+# 自定义控件
+
+虽然UI Toolkit已经提供了一套标准的控件，但是你也可以创建更加符合项目需求的自定义控件。
+
+自定义控件可以将功能封装进单独的视觉元素中，从而在不同的界面上重复使用。
+
+设计良好的控件应该是抽象、自我完备的，能提供代码复用，简化项目维护。
+
+## `UxmlElement` 特性
+
+创建自定义控件从定义一个继承`VisualElement`或其子类的C#脚本开始，为了能在UXML和UI Builder中使用自定义控件，还需要添加`UxmlElement`特性，并将类定义为`public partial`。
+
+```CS
+[UxmlElement]
+public partial class ExampleElement: VisualElement { }
+```
+
+由于视觉元素不是GameObject，没有像Awake、OnEnable这种生命周期事件，需要在构造函数中对自定义控件进行初始化。
+
+可以将初始化延迟到其被添加到UI上时，通过注册`AttackToPanelEvent`事件回调完成。通过注册`DetachFromPanelEvent`回调，可以监测自定义控件从UI上被移除。
+
+## `UxmlAttribute` 特性
+
