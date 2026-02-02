@@ -523,3 +523,55 @@ Unity本地化的关键是`Locale`类，它表示一种特定的语言，处理�
 - 数据绑定：`Localization`包继承了UI Toolkit的运行时动态绑定，将UI元素连接到字符串和资产表，在改变数据、语言或加载状态时会触发自动更新。
 - 字符串和资产表（`String and Asset Tables`）管理：字符串和资产表存储将文本或其他资产翻译成特定语言的键值对，提供一个集中式的UI界面管理项目中所有的本地化文本和资产。
 - 语言切换：实时切换语言，无需重启游戏。
+
+## 使用 `Localization` API
+
+在Game View中的Locale下拉框可用于测试不同语言环境，但是不能在构建后使用，为了让玩家可以在最终的游戏中更换语言，需要自己创建切换语言的UI。
+
+### 选择语言（Locale）
+
+如果Locale设置了两个字母的标识符，可以在`LocalizationSettings`中设置激活的Locale，将该操作连接到按钮点击事件中。
+
+```CS
+void SelectLocale(string localeCode)
+{
+	Locale locale = LocalizationSettings.AvailableLocales.GetLocale(localeCode);
+	LocalizationSettings.SelectedLocale = locale;
+}
+
+void RegisterCallbacks()
+{
+	m_ButtonDanish.clicked += () => SelectLocale("da");
+	m_ButtonEnglish.clicked += () => SelectLocale("en");
+	m_ButtonSpanish.clicked += () => SelectLocale("es");
+	m_ButtonFrench.clicked += () => SelectLocale("fr");
+}
+```
+
+### 使用 `SetBinding`
+
+在C#中使用视觉元素的`SetBinding`方法，设置数据绑定。
+
+以下例子将一个Label的text属性绑定到StringTable中的一个LocalizedString：
+
+```CS
+public class LocalizationDemo : MonoBehaviour
+{
+	// Set in Inspector
+	[SerializeField] LocalizedString m_LocalizedText;
+	
+	Label m_LocalizedLabel;
+	UIDocument m_UIDocument;
+	
+	void Start()
+	{
+		m_LocalizedLabel = m_UIDocument.rootVisualElement.Q<Label>("text__label");
+		m_LocalizedLabel.SetBinding("text", m_LocalizedText);
+	}
+}
+```
+
+### 监听语言改变
+
+在某些情况下，你可能需要在语言改变时执行一些额外的操作，这时就可以监听`LocalizationSettings` API中的`SelectedLocaleChanged`事件。
+
