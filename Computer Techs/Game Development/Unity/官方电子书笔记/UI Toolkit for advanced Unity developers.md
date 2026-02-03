@@ -679,3 +679,18 @@ public partial class ExampleElement: VisualElement { }
 
 ## `UxmlAttribute` 特性
 
+给属性添加`UxmlAttribute`特性可以让它出现在UI Builder的Inspector中，这样无需修改代码就可以设定其初始值。
+
+还可以使用`name`参数自定义属性名称，利用装饰器特性可以进一步修改自定义特性字段，例如TextArea，Tooltip，Range，Header等。
+
+```CS
+[UxmlElement]
+public partial class ExampleElement: VisualElement
+{
+	[UxmlAttribute(name:"my-text")]
+	public string myStringValue { get; set; }
+	
+	[UxmlAttribute]
+	public int myIntValue { get; set; }
+}
+```
