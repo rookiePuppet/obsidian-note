@@ -779,4 +779,45 @@ UI Toolkit支持两种类型的遮罩：
 
 ## 运行时数据绑定
 
-### 属性包和源代码生成
+### 属性包（Property Bag）和源代码生成
+
+属性包是一种伴生对象，用于高效遍历和操作一种类型的数据。默认情况下，Unity利用反射在类型初次被访问时生成属性包，这种方式在运行时会带来一点性能开销。
+
+为了提高性能，可以为属性包启用代码生成。为类型和程序集打上`[Unity.Properties.GeneratePropertyBag]`标签，这样Unity就会在编译时生成并注册属性包，消除了运行时反射的需求。还可以为单个属性添加`CreateProperty`特性，就不需要运行时反射来查找并连接属性了。
+
+### 变更追踪
+
+运行时数据绑定包括两个优化绑定更新频率的接口：
+
+- `IDataSourceViewHashProvider`：提供基于哈希的相等性检查，确保绑定仅在数据发生实质性变化时更新。
+- `INotifyBindablePropertyChanged`：使绑定仅在特定属性值改变时触发更新。
+
+```CS
+[CreateAssetMenu(fileName = "CarData", menuName = "Scriptable Objects/CarData"), GeneratePropertyBag]
+public class CarData : ScriptableObject, INotifyBindablePropertyChanged, IDataSourceViewHashProvider
+{
+	private long _version;
+	
+	[SerializeField, DontCreateProperty] string _name;
+	public event EventHandler<BindablePropertyChangedEventArgs> propertyChanged;
+	
+	[CreateProperty]
+	public string Name
+	{
+		get => _name;
+		set
+		{
+			_name = value;
+			_version++;
+			Notify();
+		}
+	}
+	
+	void Notify([CallerMemberName] string property = "")
+	{
+		propertyChanged?.Invoke(this, new BindablePropertyChangedEventArgs(property));
+	}
+	
+	public long GetViewHashCode() => _version;
+}
+```
