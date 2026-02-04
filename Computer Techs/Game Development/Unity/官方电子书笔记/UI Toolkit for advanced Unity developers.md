@@ -851,4 +851,44 @@ public class CarData : ScriptableObject, INotifyBindablePropertyChanged, IDataSo
 
 ## 内存管理
 
+USS和UXML文件直接引用字体、纹理和其他资产，加载这些文件会将所有引用的资产也一起拉进内存，它们会立即消耗内存，即使不在使用也会占用内存，所以应该正确地管理这些资产。
 
+- 使用Asset Bundle或Addressables：尽可能只加载特定场景或上下文所需的UI和样式表
+- 不需要时卸载资产：如果UI元素不再使用，使用`RemoveFromHierarchy`移除，然后使用`Addressables.Realease`或`AssetBundle.Unload(true)`进行卸载，释放内存
+- 对复杂UI选择性加载：将大型UXML或USS文件拆分成小的、模块化的模板（VisualTreeAsset），按需动态加载它们
+
+## 分析工具
+
+Unity提供了一些识别和解决UI性能问题的工具，例如Unity Profiler，UI Toolkit Debugger和Frame Debugger，这些工具可以帮助分析绘制调用、合批和布局重计算、样式更新、顶点缓冲变化等耗时操作。
+
+使用Panel Settings的`SetPanelChangeReceiver`方法可以更精细地查看UI变化，它可以监听UI变化并追溯源头，以下是一个实例脚本：
+
+```CS
+public class PanelChangeReceiver : MonoBehaviour, IDebugPanelChangeReceiver
+{
+	[SerializeField] PanelSettings m_PanelSettings;
+	
+	void Awake()
+	{
+		m_PanelSettings.SetPanelChangeReceiver(this);
+	}
+	
+	void OnDestroy()
+	{
+		m_PanelSettings.SetPanelChangeReceiver(null);
+	}
+	
+	public void OnVisualElementChange(VisualElement element, VersionChangeType changeType)
+	{
+		Debug.Log($"{element.name} {changeType}");
+	}
+}
+```
+
+## Unity6的性能增强
+
+- 事件调度：事件调度规则被简化，更易于理解，速度为原来的两倍
+- 网格生成增强：关键改进包括针对传统元素几何的专一化几何生成，以及从向量API向原生实现的转变，文本生成也能并行化
+- Custom Geometry API：使开发者能够以相同级别的性能生成自定义几何，对UI组件进行高度优化
+- Deep Hierarchy Layout Performance：改进布局计算缓存，显著提高深层级的性能
+- 优化大型数据集的TreeView
