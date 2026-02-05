@@ -125,12 +125,18 @@ PrefabInstance:
 
 `m_Modifications`包含对原预制体的所有修改或“重写”。
 
-那么如何在嵌套的预制体中引用对象呢？Unity会在预制体中创建一个“占位符”对象，在嵌套预制体中引用正确的对象，这些占位符对象被“**stripped**”标签标记，意味着它们已被简化，仅保留作为占位对象所需的属性。
+那么如何在嵌套的预制体中引用对象呢？Unity会在预制体中创建一个“占位符”对象，在嵌套预制体中引用正确的对象，这些占位符对象被“**stripped**”标签标记，意味着它们已被简化，仅保留作为占位对象所需的属性`m_CorrespondingSourcePrefab`和`m_PrefabInstance`。
 
 ```YAML
---- !u!4 &2302497158568003393 stripped
+--- !u!4 &832575519
 Transform:
-  m_CorrespondingSourceObject: {fileID: 595431800449270407, guid: f8040f370f0e10c4b9dbb2387f656351, type: 3}
-  m_PrefabInstance: {fileID: 1708969712560031174}
+  ...
+  m_Children: []
+  m_Father: {fileID: 8850751813123477771}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &8850751813123477771 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+  m_PrefabInstance: {fileID: 8850751813123477770}
   m_PrefabAsset: {fileID: 0}
 ```
