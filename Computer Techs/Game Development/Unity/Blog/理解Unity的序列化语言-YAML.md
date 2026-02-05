@@ -48,3 +48,18 @@ GameObject:
 第二行就是该对象类型的名称，可以让你能够识别该对象的类型。
 
 在对象头部之后，是其所有的序列化属性，ScriptableObject、Animation、Material等类型的序列化使用的也是类似的格式。注意ScriptableObject使用MonoBehaviour作为其对象类型，是因为其内部使用MonoBehaviour类作为宿主。
+
+## 局部引用
+
+每个对象在YAML文件中都有一个唯一的“File ID”，用于对象之间的相互引用，YAML格式使用`{fileID: FILE ID}`来表示这种引用值，若File ID为0则代表空引用。
+
+```YAML
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8389683831438724747}
+```
+
+想象一下在预制体中重新设定父子关系的情形，你可以更改Transform的`m_Father`属性的File ID为新的父变换ID，再把Transform的File ID加入新的父Transform的`m_Children`数组，并从原Transform的`m_Children`中移除。
