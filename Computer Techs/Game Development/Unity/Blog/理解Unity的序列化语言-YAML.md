@@ -122,3 +122,15 @@ PrefabInstance:
 ```
 
 `m_SourcePrefab`引用嵌套的预制体资产，100100000是在导入该预制体时创建的对象的File ID，叫做预制体资产句柄，不会出现在YAML中。
+
+`m_Modifications`包含对原预制体的所有修改或“重写”。
+
+那么如何在嵌套的预制体中引用对象呢？Unity会在预制体中创建一个“占位符”对象，在嵌套预制体中引用正确的对象，这些占位符对象被“**stripped**”标签标记，意味着它们已被简化，仅保留作为占位对象所需的属性。
+
+```YAML
+--- !u!4 &2302497158568003393 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 595431800449270407, guid: f8040f370f0e10c4b9dbb2387f656351, type: 3}
+  m_PrefabInstance: {fileID: 1708969712560031174}
+  m_PrefabAsset: {fileID: 0}
+```
