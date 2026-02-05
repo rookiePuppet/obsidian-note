@@ -125,7 +125,7 @@ PrefabInstance:
 
 `m_Modifications`包含对原预制体的所有修改或“重写”。
 
-那么如何在嵌套的预制体中引用对象呢？Unity会在预制体中创建一个“占位符”对象，在嵌套预制体中引用正确的对象，这些占位符对象被“**stripped**”标签标记，意味着它们已被简化，仅保留作为占位对象所需的属性`m_CorrespondingSourcePrefab`和`m_PrefabInstance`。
+那么如何在嵌套的预制体中引用对象呢？Unity会在预制体中创建一个“占位符”对象，这些占位符对象被“**stripped**”标签标记，意味着它们已被简化，仅保留作为占位对象所需的属性`m_CorrespondingSourcePrefab`和`m_PrefabInstance`，被添加进来的对象的Transform的`m_Father`属性中会加入该占位符对象的File ID。另外在PrefabInstance对象的`m_AddedGameObjects`属性中还会添加一个`targetCorrespondingSourceObject`条目，其中的`addedObject`引用添加到预制体中的对象的Transform的File ID。
 
 ```YAML
 --- !u!4 &832575519
@@ -134,9 +134,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8850751813123477771}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &8850751813123477770
+PrefabInstance:
+	...
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 832575519}
 --- !u!4 &8850751813123477771 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
   m_PrefabInstance: {fileID: 8850751813123477770}
   m_PrefabAsset: {fileID: 0}
 ```
+
+对于预制体变体来说，其基预制体也仅仅是一个附带无父对象Transform的PrefabInstance而已，意味着它是变体的根对象。
