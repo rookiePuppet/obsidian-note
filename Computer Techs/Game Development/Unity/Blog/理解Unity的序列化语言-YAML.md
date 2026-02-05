@@ -83,4 +83,42 @@ Transform:
 
 - 在所有资产中搜索某个资产的GUID，查找该资产的所有用处
 - 在整个项目中将该资产的所有用处替换为另一个资产的GUID
-- 
+- 将一个资产替换成不同扩展名的资产（如把MP3文件替换成WAV文件）时，可以将原资产删除，新资产使用和原资产相同的名字，再修改meta文件名称为新的扩展名
+- 当删除又重新添加相同的资产时，修改新的GUID为旧的GUID，可以修复丢失的引用
+
+## 预制体实例、嵌套预制体和变体
+
+在场景中使用预制体实例或在预制体中嵌套另一个预制体时，预制体的GameObject和组件不会序列化在使用它的预制体中，而是变成一个**PrefabInstance**对象，其关键属性是`m_SourcePrefab`和`m_Modifications`。
+
+```YAML
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6723542853937848056, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8389683831438724747, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+      propertyPath: m_Name
+      value: Cube
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 173677591ef646a4cae83219c4ccfbaa, type: 3}
+```
+
+`m_SourcePrefab`引用嵌套的预制体资产，100100000是在导入该预制体时创建的对象的File ID，叫做预制体资产句柄，不会出现在YAML中。
