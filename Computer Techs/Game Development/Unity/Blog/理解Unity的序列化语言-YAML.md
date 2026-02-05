@@ -63,3 +63,17 @@ Transform:
 ```
 
 想象一下在预制体中重新设定父子关系的情形，你可以更改Transform的`m_Father`属性的File ID为新的父变换ID，再把Transform的File ID加入新的父Transform的`m_Children`数组，并从原Transform的`m_Children`中移除。
+
+要通过名字找到一个特定的Transform，必须首先用`m_Name`属性找到其GameObject的File ID，然后才能定位到`m_GameObject`属性引用该ID的Transform。
+
+## Meta文件和跨文件引用
+
+如果要引用当前文件以外的对象，例如一个Weapon脚本要引用一个Bullet预制体，事情就变得复杂一些了。记住Fild ID是局限于一个文件内的，意味着在不同文件中都可以重复使用该ID。
+
+为了能唯一识别任意文件中的对象，我们需要一个额外的ID（GUID）来标识整个文件。因此，每一个资产在其meta文件中都定义了一个GUID，meta文件放置在和原文件在相同的文件夹中，名称相同并加上了.meta扩展名。对于非Unity原生文件格式，如PNG或FBX，Unity将额外的导入设置序列化到meta文件中，这是为了将额外的文件属性分开存储，并利于版本控制。
+
+于是，我们就可以通过将meta文件中GUID和YAML中对象的File ID组合起来，唯一标识一个对象，如`{fileID: xxxx, guid: xxxx, type: 3}`，其中`type`用于表示文件应该从Assets文件夹还是Library文件夹加载，只支持以下两个值（0和1被弃用）：
+
+- 2：可以被编辑器直接从Assets文件夹加载的资产，例如Material和.asset文件
+- 3：已经经过处理并写入到Library文件夹的资产，例如预制体，纹理和3D模型
+
