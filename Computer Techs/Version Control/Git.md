@@ -1,5 +1,4 @@
-
-#### 配置Git
+# 配置Git
 
 在Git安装完成之后，还需要配置一下用户信息，在Git命令行中输入如下命令进行配置。
 
@@ -14,7 +13,19 @@ git config --global user.email "email"
 
 `git config`命令不加`--global`是配置当前仓库，加了`--global`就是配置当前用户。
 
-#### gitignore文件
+# 命令
+
+## restore
+
+```git
+git restore [file] --staged HEAD
+```
+
+恢复文件更改，必须是已加入版本管理的文件。
+
+默认携带`--staged HEAD`参数，即从当前HEAD指针指向的提交恢复。
+
+# gitignore文件
 
 有些文件必须放在Git仓库目录中，但是又不能提交它们，比如保存了数据库密码的配置文件等。
 
@@ -22,7 +33,7 @@ git config --global user.email "email"
 
 注意，.gitignore文件需要提交到Git仓库。
 
-##### 文件内容
+### 文件内容
 
 [Github已经为我们准备好了各种.gitignore文件，不需要从头开始写。](https://github.com/github/gitignore)
 
@@ -45,9 +56,9 @@ git config --global user.email "email"
 - 问号（?）只匹配一个任意字符；
 - 如果在方括号中使用短划线分隔两个字符，表示所有在这两个字符范围内的都可以匹配（比如 [0-9] 表示匹配所有 0 到 9 的数字）。
 
-##### 可能遇到的问题
+### 可能遇到的问题
 
-###### 无法将某文件提交到git
+#### 无法将某文件提交到git
 
 ```GIT
 $ git add Table.unitypackage
@@ -69,13 +80,13 @@ git add -f Table.unitypackage
 git check-ignore -v Table.unitypackage
 ```
 
-#### Git LFS
+# Git LFS
 
 Git LFS（Large File Storage），即Git大文件存储，是可以把音乐、图片、视频等指定的任意文件存在Git仓库之外，在Git仓库中用一个占用空间不到1KB的文本指针来代替的小工具。
 
 这样就可以减小Git仓库的体积，加快克隆仓库的速度，也避免了因为在Git中存储很多大文件而损失性能的问题。
 
-##### 为什么要有LFS
+## 为什么要有LFS
 
 在游戏开发中，美术资源占用很大一部分内存空间，像png、psd等文件是二进制的，体积也很庞大。
 
@@ -89,11 +100,11 @@ LFS就是为了解决这一问题而产生的工具，它将你标记的大文�
 
 在checkout版本时，根据指针的变量情况更新对应的大文件，而不是在本地保存所有版本的大文件。
 
-##### 安装LFS
+## 安装LFS
 
 LFS支持Git的最低版本是1.8.5，最新的Git安装包基本已经自带了LFS，可以使用`git lfs version`命令测试是否安装了LFS。
 
-##### 使用LFS
+## 使用LFS
 
 1. 在需要使用LFS的版本库中执行`git lfs install`命令，只需要执行一次。
 	```GIT
@@ -106,7 +117,7 @@ LFS支持Git的最低版本是1.8.5，最新的Git安装包基本已经自带了
 	之后在版本库根目录中会生成一个.gitattributes文件，其中记录了需要LFS跟踪的文件，也可以直接手动编辑该文件。
 	> 命令添加与手动添加的区别：使用命令时，会将已有的指定类型的大文件转化为文件指针，而手动编辑方式不会影响现有文件，只会影响后续添加的文件。两种方式都不会减小版本库的体积，因为不会改变之前的提交记录。
 
-##### 常用命令
+## 常用命令
 
 - 查看当前使用Git LFS管理的匹配列表。
 	```GIT
@@ -133,7 +144,7 @@ LFS支持Git的最低版本是1.8.5，最新的Git安装包基本已经自带了
 	git lfs version
 	```
 
-##### 常见问题
+## 常见问题
 
 前面提到中途使用LFS无法改变原有版本库体积，如果已经上传了一些大文件到版本库中，如何减小版本库的体积？
 
@@ -147,7 +158,7 @@ LFS支持Git的最低版本是1.8.5，最新的Git安装包基本已经自带了
 
 因为修改了提交记录，最后需要强制push来将本地所有的提交推送到远程仓库。
 
-## 遇到的问题
+# 遇到的问题
 
 ### fatal: protocol 'https' is not supported
 
