@@ -17,13 +17,30 @@ git config --global user.email "email"
 
 ## restore
 
-```git
-git restore [file] --staged HEAD
+```shell
+git restore <file>...
 ```
 
 恢复文件更改，必须是已加入版本管理的文件。
 
-默认携带`--staged HEAD`参数，即从当前HEAD指针指向的提交恢复。
+- `--staged`：恢复暂存区更改
+- `--worktree`：恢复工作树更改，默认携带该参数
+
+## reset
+
+```shell
+git reset <commit> [mode]
+```
+
+改变HEAD指针指向为指定的一次提交，用于撤销操作。
+
+可以指定目标文件或目录，也可以附加`--patch`参数进入交互式模式。
+
+- `--mixed`：保持工作树不变，只更新暂存区，默认模式
+- `--soft`：保持工作树和暂存区不变，如果暂存区为空，可以使用`--soft HEAD~5`将前5次提交合并
+- `--hard`：覆盖所有文件和目录，可能会覆盖未追踪的文件，会清空暂存区
+- `--merge`：重置暂存区并更新工作树中的文件，保留暂存区和工作树有差异的文件
+- `--keep`：重置暂存区并更新工作树中的文件，若目标提交与HEAD之间有差异的文件存在本地更改，命令会中止
 
 # gitignore文件
 
