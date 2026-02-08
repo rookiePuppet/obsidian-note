@@ -50,6 +50,40 @@ git revert <commit>
 
 撤销指定提交，并产生一次新的提交记录该操作，需要工作树保持干净（无任何更改）。
 
+## rebase
+
+```shell
+git rebase <branch>
+```
+
+将一系列提交移动到另一个基点上。
+
+假设当前处于topic分支，`git rebase master`可将topic分支的提交移动到master分支上。
+
+如果不处于topic分支，则可以使用快捷方式`git rebase master topic`，自动切换到topic分支。
+
+```text
+	  A---B---C topic
+	 /
+D---E---F---G master
+
+>>> rebase之后 >>>
+
+			  A'--B'--C' topic
+			 /
+D---E---F---G master
+```
+
+```shell
+git rebase --onto <branch> <begin> <end>
+```
+
+使用`--onto`参数可指定某个区间的提交进行变基。
+
+## merge
+
+## log
+
 # gitignore文件
 
 有些文件必须放在Git仓库目录中，但是又不能提交它们，比如保存了数据库密码的配置文件等。
