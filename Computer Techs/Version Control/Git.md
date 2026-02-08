@@ -82,7 +82,41 @@ git rebase --onto <branch> <begin> <end>
 
 ## merge
 
+```shell
+git merge <branch>
+```
+
+将当前分支合并到指定分支，或将当前分支的更改在指定分支上重放。
+
+若目标分支的所有提交都是当前分支的直接后代，可以添加`--ff-only`参数，直接将当前分支的指针移动到目标分支处。
+
 ## log
+
+```shell
+git log --oneline --graph --all
+```
+
+## diff
+
+```shell
+git diff [branch] [branch] [file]
+```
+
+查看文件差异，可以指定要对比的两个分支或提交，如果没有指定，则对比当前工作树和HEAD。
+
+## stash
+
+```shell
+git stash [push]
+```
+
+将暂存区更改移动到贮藏区。
+
+- `push`：将暂存区更改移入贮藏区，创建一条贮藏记录，默认指令
+- `drop`：从贮藏区移除最新或指定的一条贮藏记录
+- `pop`：从贮藏区取出最新的一条贮藏记录应用到暂存区，并移除记录
+- `apply`：将贮藏区的最新记录或指定记录应用到暂存区
+- `list`：列出贮藏区所有记录
 
 # gitignore文件
 
