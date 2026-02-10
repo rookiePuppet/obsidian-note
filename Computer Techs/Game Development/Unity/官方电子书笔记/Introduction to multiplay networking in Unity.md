@@ -142,5 +142,49 @@ Unity开发者主要在应用层上实现多人联机功能，不需要担心底
 
 ![[Pasted image 20260210155954.png]]
 
+# Unity联机解决方案
 
+Unity为各种类型和规模的多人游戏开发提供了综合性的方案，不同类型的游戏有不同的联机需求，休闲游戏一般优先考虑简洁性和成本效益，而竞技游戏需要精确和稳定的网络管理来保证公平性和响应性。
+
+## Netcode for GameObjects
+
+对于休闲合作类型的多人游戏，推荐使用Netcode for GameObjects，这个包通过抽象联网逻辑来简化多人游戏开发，使管理所有玩家的游戏状态更加容易。
+
+Netcode for GameObjects包含以下关键功能：
+
+- NetworkObject：表示网络中应该被同步的任何对象，处理对象的生成、销毁和所有权
+- NetworkBeaviour：拥有联网能力的MonoBehaviour，提供处理网络事件的内置回调，让你可以编写服务器侧和客户端侧的代码
+- Remote procedure calls(RPCs)：在GameObject远程实例上发送消息和调用方法
+- NetworkVariable：用于在网络上同步状态
+- NetworkManager：管理网络状态，处理连接和场景管理等任务的中心组件
+
+## Netcode for Entities
+
+Netcode for Entities构建于DOTS(Data-Oriented Technology Stack)和ECS(Entity Component System)之上，为服务器权威的游戏而设计，包含客户端侧预测、插值和延迟补偿等高级特性。
+
+| 特性        | Netcode for GameObjects                                              | Netcode for Entities                    |
+| --------- | -------------------------------------------------------------------- | --------------------------------------- |
+| 目标群体      | 入门和中级开发者                                                             | 高级开发者                                   |
+| 架构        | 面向对象（基于Mono Behaviour）                                               | 面向数据（ECS和DOTS）                          |
+| 性能        | 适合小规模游戏                                                              | 为高性能和扩展性优化                              |
+| 可扩展性      | 有限，适合少量玩家的游戏                                                         | 高扩展性，适合大规模游戏                            |
+| 联网功能      | NetworkVariables，RPCs，NetworkTransform，有限的客户端侧预测、插值，支持UnityTransport | 完整的客户端侧预测、插值、延迟补偿功能，支持更优的UnityTransport |
+| Unity服务继承 | 完全支持Lobby、Relay等                                                     | 完全支持Lobby、Relay等                        |
+
+## Unity Transport
+
+Unity Transport是一个与网络代码无关的包，提供底层网络层，专注于性能和可靠性，通过高级特性扩展了传统UDP。
+
+- 可靠性：在UDP上增加可靠的通信功能，确保重要的消息能成功送达，而无需TCP那样的开销
+- 安全性：整合加密和认证机制，防止数据被未经授权者访问
+- 性能：针对低时延和高吞吐量进行了优化
+- 跨平台兼容性：为跨平台和跨设备无缝运行和协同而设计
+
+Netcode for GameObjects和Netcode for Entities都依赖于Unity Transport，如果开发者需要对网络更精细的控制，也可以将Unity Transport作为一个独立的库使用，在其之上构建自定义的网络代码。
+
+> [!NOTE] 第三方联网库
+> - Photon Unity Networkng(PUN)
+> - Mirror
+> - DarkRift Networking 2
+> - Forge Networking Remastered
 
