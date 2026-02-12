@@ -523,3 +523,15 @@ private void ChangeColorServerRpc(ulong playerId)
 	m_NetworkColor.Value = newColor;
 }
 ```
+
+## RPC对比NetworkVariable
+
+在同步数据时，需要根据实际情况选择使用NetworkVariable和RPC。
+
+- NetworkVariable和NetworkTransform适合持续同步的数据，例如位置、生命值、游戏比分等
+- RPC更适用于离散事件，例如玩家操作或不需要持续同步的游戏状态变化
+
+两者在联网游戏中都是重要的数据同步机制，NetworkVariable管理持续进行的状态，而RPC处理特定事件和操作。
+
+以下例子可以帮助你决定何时使用NetworkVariable还是RPC。
+
