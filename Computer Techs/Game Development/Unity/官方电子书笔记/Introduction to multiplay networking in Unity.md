@@ -426,3 +426,100 @@ public class ServerPlayerMove : NetworkBehaviour
 
 将ServerPlayerMove脚本添加到玩家预制体上，每当一个客户端连接时，就会调用SpawnPlayer，在一个随机点位生成玩家，IsServer检查用于确保这个逻辑只发生在服务器。
 
+# 网络同步
+
+前面已经使用客户端驱动模式来同步玩家NetworkObject的移动和动画，但是游戏中不只有玩家角色，可能还有子弹、门以及其他可交互的场景对象，这些交互也需要可联网。
+
+## 游戏机制
+
+下面通过再现一个简单的游戏机制来说明服务器-客户端通信。
+
+在关卡中添加一个触发器碰撞体，当它被玩家触碰时会改变颜色，之后我们会使用NetworkVariables和RPC来同步其颜色变化。
+
+## 定义一个NetworkVariable
+
+NetworkVariable是一种特殊的变量，被设计用于在网络中管理同步状态，在服务器上对其修改会传递给所有客户端，这非常适合持续同步的数据。
+
+下面创建一个叫做ColorTrigger的NetworkBehaviour，将它附加到触发器对象上。
+
+```CS
+using UnityEngine;
+using Unity.Netcode;
+
+public class ColorTrigger : NetworkBehaviour
+{
+    public NetworkVariable<Color> m_NetworkColor = new NetworkVariable<Color>(Color.white);
+    private Material m_InstanceMaterial;
+
+    public override void OnNetworkSpawn()
+    {
+        m_NetworkColor.OnValueChanged += OnColorChanged;
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            m_InstanceMaterial = new Material(meshRenderer.material);
+            meshRenderer.material = m_InstanceMaterial;
+            UpdateMaterialColor(m_NetworkColor.Value);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        m_NetworkColor.OnValueChanged -= OnColorChanged;
+    }
+
+    private void OnColorChanged(Color oldColor, Color newColor)
+    {
+        UpdateMaterialColor(newColor);
+    }
+
+    private void UpdateMaterialColor(Color newColor)
+    {
+        if (m_InstanceMaterial != null)
+        {
+            m_InstanceMaterial.SetColor("_BaseColor", newColor);
+        }
+    }
+}
+```
+
+当玩家进入这个触发器时，脚本会切换材质的基础颜色。
+
+- NetworkVariable追踪实际的颜色值，将其在所有客户端之间同步。虽然脚本会同时在服务器和客户端上运行，但默认情况下只有服务器有对NetworkVariable的写入权限，客户端只能读取。
+- OnValueChanged事件在NetworkVariable变化时触发，更新触发器的材质颜色
+
+在客户端上运行时，NetworkVariable无法直接修改，而必须通过通知服务器去修改，服务器更新状态后传递回来，只有这样，客户端才能看到变化生效。
+
+为了处理这种通信，我们需要使用RPC。RPC可以让一个设备要求另一个设备执行特定的动作或更新，不仅可以由客户端向服务器调用，也可以由服务器向客户端调用。
+
+## 添加一个RPC
+
+RPC可以远程地调用服务器或客户端上的函数，例如被`[Rpc(SendTo.Server)]`的方法是由客户端向服务器发起的RPC，也可以使用遗留的`[ServerRpc]`写法。
+
+RPC方法必须遵循一些约定：
+
+- Rpc特性：为方法声明`[Rpc]`特性，并指定目标，例如`[Rpc(SendTo.Server)]`只在服务器上执行
+- 命名约定：使用“Rpc”后缀命名，如`DoSomethingRpc`
+
+RPC更适合离散/独立事件，例如玩家操作或不需要持续同步的特定游戏状态改变。
+
+为TriggerColor脚本添加以下方法：
+
+```CS
+private void OnTriggerEnter(Collider other)
+{
+	NetworkObject networkObject = other.GetComponent<NetworkObject>();
+	if (IsClient && networkObject != null && networkObject.IsOwner)
+	{
+		ChangeColorServerRpc(networkObject.OwnerClientId);
+	}
+}
+
+[Rpc(SendTo.Server)]
+private void ChangeColorServerRpc(ulong playerId)
+{
+	// Simple team system: blue for even, red for odd
+	Color newColor = (playerId % 2 == 0) ? new Color(0, 0, 1, 0.5f) : new Color(1, 0, 0, 0.5f);
+	m_NetworkColor.Value = newColor;
+}
+```
