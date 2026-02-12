@@ -322,7 +322,7 @@ namespace NetcodeDemo
 ```
 
 > [!NOTE] 权力和所有权属性
-> 虽然已连接和被准许的客户端可以使用`SpawnWithOwnership`方法持有NetworkObject，但是在默认情况下是服务器持有。Netcode for GameObjects是服务器权威的，意味着只有服务器有权利生成和销毁NetworkObject。
+> 虽然已连接和被准许的客户端可以使用`SpawnWithOwnership`方法持有NetworkObject，但是在默认情况下是服务器持有。Netcode for GameObjects是服务器权威的，意味着只有服务器有权利生成和销毁NetworkObject。<br>
 > NetworkBehaviour包含一些属性来确定实例的权力和所有权：
 > - IsClient：表示实例是否在客户端上运行
 > - IsServer：表示实例是否在服务器上运行
@@ -331,5 +331,43 @@ namespace NetcodeDemo
 > - IsOwner：表示本地玩家是否持有该对象或该对象是否为本地玩家对象
 > - IsPlayerObject：表示该GameObject是否表示一个网络玩家（被一个特定的客户端控制）
 > - IsSceneObject：表示该GameObject是否默认为场景的一部分，不是在游戏期间动态生成的。场景对象通常由服务器管理。
+> <br> 
+
+## 使用NetworkTransform和NetworkAnimator同步
+
+NetworkBehaviour可以在多个客户端上生成相同的玩家实例，但是要同步玩家的移动还需要额外的组件。
+
+首先添加NetworkTransform到玩家预制体上，取消勾选不影响游戏的轴，例如取消所有的缩放和x、z轴旋转，以减少带宽。
+
+然后再添加NetworkAnimator，将Animator组件赋值给它。
+
+现在，主机玩家在跑动时，其移动会传递给客户端，但客户端玩家移动却不能反映在主机上。这是因为NetworkTransform是在服务器权力下运行的，只会将服务器位置同步给客户端，当你尝试在客户端上移动玩家时，服务器会重写客户端的期望位置，将其重置为原点。
+
+## 采用客户端权力
+
+NetworkTransform默认在服务器权威模式下运行，服务器侧检测变换轴的变更，发送给已连接的客户端。
+
+要解决客户端无法移动的问题，一种方法是将权力从服务器转移给客户端，即允许客户端控制它自己的变换，而不会被服务器重写。
+
+我们可以创建一个继承NetworkTransform的ClientNetworkTransform组件替代原本的NetworkTransform组件，重写`OnIsServerAuthoritative`方法，让其返回false。类似地，可以创建一个客户端驱动的NetworkAnimator。
+
+```CS
+using Unity.Netcode.Components;
+using UnityEngine;
+
+namespace NetcodeDemo
+{
+	[DisallowMultipleComponent]
+	public class ClientNetworkTransform : NetworkTransform
+	{
+		protected override bool OnIsServerAuthoritative()
+		{
+			return false;
+		}
+	}
+}
+```
+
+客户端驱动也是一种降低时延的方式，在“持有者权力模式”下，网络行为可以快速响应，不需要等待和服务器通信的一个往返时间。
 
 
