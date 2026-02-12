@@ -370,4 +370,59 @@ namespace NetcodeDemo
 
 客户端驱动也是一种降低时延的方式，在“持有者权力模式”下，网络行为可以快速响应，不需要等待和服务器通信的一个往返时间。
 
+## 服务器权力同步
+
+某些移动只能在服务器侧完成，通常来说，应该使用服务器权力来防止任何潜在的不平衡性。
+
+例如，让客户端自行选择在地图上的出生位置可能会带来过度的优势，如果让服务器在预定义的出生点中随机赋予他们一个位置则更加公平。
+
+可以用一个非联网的MonoBehaviour来管理这些出生点，例如这样：
+
+```CS
+public class ServerPlayerSpawnPoints : Singleton<ServerPlayerSpawnPoints>
+{
+	[SerializeField]
+	private List<GameObject> m_SpawnPoints;
+	
+	public GameObject GetRandomSpawnPoint()
+	{
+		if (m_SpawnPoints.Count == 0)
+			return null;
+		return m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)];
+	}
+}
+```
+
+然后在一个叫做ServerPlayerMove的NetworkBehaviour中，可以使用ServerPlayerSpawnPoints来随机选取出生点。
+
+```CS
+using Unity.Netcode;
+using UnityEngine;
+
+[DefaultExecutionOrder(0)] // Execute before ClientNetworkTransform
+public class ServerPlayerMove : NetworkBehaviour
+{
+	public override void OnNetworkSpawn()
+	{
+		// Only execute on the Server
+		if (!IsServer)
+		{
+			enabled = false;
+			return;
+		}
+		SpawnPlayer();
+		base.OnNetworkSpawn();
+	}
+	
+	// Move to the next available position when spawning
+	void SpawnPlayer()
+	{
+		var spawnPoint = ServerPlayerSpawnPoints.Instance.GetRandomSpawnPoint();
+		var spawnPosition = spawnPoint ? spawnPoint.transform.position : Vector3.zero;
+		transform.position = spawnPosition;
+	}
+}
+```
+
+将ServerPlayerMove脚本添加到玩家预制体上，每当一个客户端连接时，就会调用SpawnPlayer，在一个随机点位生成玩家，IsServer检查用于确保这个逻辑只发生在服务器。
 
