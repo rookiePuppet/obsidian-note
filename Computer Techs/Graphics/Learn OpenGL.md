@@ -86,7 +86,7 @@ cmake -S /glfw-path ./build
 
 
 
-## GLAD
+### GLAD
 
 因为OpenGL只是一个标准/规范，具体的实现是驱动制造商为特定的显卡提供的。
 
@@ -103,15 +103,9 @@ unsigned int buffer;
 glGenBuffers(1, &buffer);
 ```
 
-### 准备GLAD
-
 GLAD是一个开源库，用于完成上述繁琐工作。GLAD的设置和大多数开源库有些不同，它使用一个Web服务让我们选择要定义和加载相关OpenGL函数的OpenGL版本
 
-# Hello Window
-
-新建项目后，将glfw和glad相关文件复制到工程中，或利用其他方式进行关联。
-
-基础的文件结构如下：
+完成所有准备工作后，我们将得到如下文件。
 
 - include
 	- glad
@@ -125,11 +119,111 @@ GLAD是一个开源库，用于完成上述繁琐工作。GLAD的设置和大多
 	- glfw3.lib
 - glad.c
 
-首先创建一个.cpp文件，添加以下include语句：
+# Hello Window
+
+新建项目后，将glfw和glad相关文件复制到工程中，或利用其他方式进行关联。
+
+首先创建一个.cpp文件，添加以下include语句，注意，GLAD引用必须在GLFW之前。
 
 ```cpp
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 ```
 
-注意，GLAD引用必须在GLFW之前。
+然后在main函数中实例化GLFW窗口，使用`glfwInit`初始化GLFW，之后通过`glfwWindowHint`配置GLFW，第一个参数用于选择配置选项，第二个参数用于设置选项的值。前两个`glfwWindowHint`语句用于配置我们想要使用的OpenGL版本（3.3），以便于GLFW可以正确创建OpenGL上下文，确保GLFW在用户使用不恰当的OpenGL版本时运行失败。然后我们告诉GLFW要使用核心模式，意味着我们将只能访问OpenGL特性的一个更小的子集，不需要使用向后兼容的特性。
+
+```cpp
+int main()
+{
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Mac OS X额外添加该行代码
+	return 0;
+}
+```
+
+下一步是创建一个窗口对象，它拥有大部分GLFW函数需要的所有窗口数据。
+
+```cpp
+GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+if (window == NULL)
+{
+	std::cout << "Failed to create GLFW window" << std::endl;
+	glfwTerminate();
+	return -1;
+}
+glfwMakeContextCurrent(window);
+```
+
+## GLAD
+
+在调用任何OpenGL函数之前，需要先初始化GLAD。
+
+```cpp
+if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+{
+	std::cout << "Failed to initialize GLAD" << std::endl;
+	return -1;
+}
+```
+
+GLFW提供了`glfwGetProcAddress`定义当前系统的函数位置，将它传递给`gladLoadGLLoader`函数来加载OpenGL函数指针的地址。
+
+## 视口
+
+在开始渲染之前，我们还需要做最后一件事，告诉OpenGL我们的渲染窗口尺寸，让OpenGL知道如何显示相对于窗口的数据和坐标。
+
+可以通过`glViewport`函数来设置窗口大小，前两个参数设置窗口左下角的位置，后两个参数设置窗口的宽高。
+
+```cpp
+glViewport(0, 0, 800, 600);
+```
+
+当用户调整窗口大小时，视口也应该跟随变化。可以在窗口上注册一个回调函数来更新视口大小，这个回调函数的原型如下：
+
+```cpp
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+```
+
+```cpp
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
+```
+
+注册回调函数，让每当窗口大小变化时执行视口更新函数。
+
+```cpp
+glfwSetFramebufferSizeCallback(window, framebuffer_size_callback)
+```
+
+## 准备你的引擎
+
+我们不想让程序只是绘制了一张图像后就立即退出，而是持续绘制图像并处理用户输入。为此，我们需要创建一个while循环，它被称为`渲染循环`（render loop），以下代码是一个简单的渲染循环。
+
+```cpp
+while(!glfwWindowShouldClose(window))
+{
+	glfwSwapBuffers(window);
+	glfwPollEvents();
+}
+```
+
+`glfwWindowShouldClose`函数检查GLFW是否被指示关闭，`glfwPollEvents`函数检查是否用时间被触发，更新窗口状态和调用相关函数，`glfwSwapBuffers`函数用于交换颜色缓冲区（包含GLFW窗口中每一个像素颜色数据的2D缓冲区）。
+
+> [!note] 双缓冲区
+> 如果程序在单个缓冲区上绘制，可能会导致最终图像有闪烁问题。这是因为图像不是一瞬间绘制完成的，而通常是从左到右、从上到下地逐像素绘制的。<br>
+> 为了解决该问题，窗口会应用双缓冲区来渲染，**前缓冲区**包含显示在屏幕上的最终输出图像，所有的渲染指令都会应用到**后缓冲区**。当所有指令完成后，将后缓冲区的内容**替换**到前缓冲区，从而消除伪影。
+
+## 最后一件事
+
+当我们退出渲染循环时，需要将所有已分配的GLFW资源正确清除，可以在main函数的最后通过调用`glfwTerminate`函数来完成。
+
+```cpp
+glfwTerminate();
+return 0;
+```
+
