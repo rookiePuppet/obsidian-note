@@ -227,3 +227,109 @@ glfwTerminate();
 return 0;
 ```
 
+## 输入
+
+GLFW的`glfwGetKey`函数可以返回某个按键是否正在被按下，创建一个`processInput`函数来组织所有输入相关的代码。
+
+```cpp
+void processInput(GLFWwindow *window)
+{
+	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+}
+```
+
+将该函数加入到渲染循环中，这样一旦按下Escape键，窗口就会退出了。
+
+```cpp
+while (...)
+{
+	processInput(window);
+	...
+}
+```
+
+## 渲染
+
+由于我们要在循环的每一帧执行所有的渲染指令，所以将所有渲染指令都放在渲染循环中，就像这样：
+
+```cpp
+// render loop
+while(!glfwWindowShouldClose(window))
+{
+	// input
+	processInput(window);
+	// rendering commands here
+	...
+	// check and call events and swap the buffers
+	glfwPollEvents();
+	glfwSwapBuffers(window);
+}
+```
+
+为了测试，下面我们使用一种颜色来填充屏幕，并且在每一帧开始时需要先清除屏幕，否则仍然会看到前一帧的渲染结果。可以使用`glClear`函数清除屏幕的颜色缓冲区，传入缓冲区位来指定要清除的缓冲区，可设置的位有`GL_COLOR_BUFFER_BIT`， `GL_DEPTH_BUFFER_BIT`和`GL_STENCIL_BUFFER_BIT`。
+
+## 目前为止的代码
+
+```cpp
+#include <iostream>
+#include <glad\glad.h>
+#include <GLFW\glfw3.h>
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
+
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+}
+
+int main()
+{
+	// 初始化GLFW
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	// 创建GLFW窗口
+	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(window);
+
+	// GLAD加载函数指针
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return -1;
+	}
+
+	// 设置视口，注册窗口大小调整回调函数
+	glViewport(0, 0, 800, 600);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+	// 渲染循环
+	while (!glfwWindowShouldClose(window))
+	{
+		processInput(window);
+
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glfwPollEvents();
+		glfwSwapBuffers(window);
+	}
+
+	// 释放资源并退出
+	glfwTerminate();
+	return 0;
+}
+```
