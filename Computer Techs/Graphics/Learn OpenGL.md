@@ -365,7 +365,7 @@ int main()
 
 **透明度测试和混合阶段**会检查片元的深度（和模板）值，判断其是否应该被丢弃，并检查**透明度**值，相应地对像素进行**混合**。
 
-## 顶点输入
+### 顶点输入
 
 OpenGL只会处理三个轴在`[-1.0, 1.0]`范围内的3D坐标，这种坐标称为`标准化设备坐标`。
 
@@ -408,3 +408,65 @@ glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 ```
 
 因为这里顶点的位置数据不会改变，会被频繁使用，并且每一次渲染调用都保持相同，所以最好使用`GL_STATIC_DRAW`。
+
+### 顶点着色器
+
+现代OpenGL要求必须至少配置一个顶点着色器和一个片元着色器，我们首先要用GLSL编写一个顶点着色器，然后编译它。
+
+```c
+#version 330 core
+layout (location = 0) in vec3 aPos;
+
+void main()
+{
+	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+}
+```
+
+第一行声明GLSL的版本，这和OpenGL版本是相对应的，因为我们使用OpenGL 3.3，所以这里是330，另外还显式声明了使用核心模式。
+
+接着我们使用`in`关键字声明所有输入顶点属性，目前我们只关心位置数据，所以只需要一个顶点属性即可。我们还通过`layout (location = 0)`，设置了输入变量的位置。
+
+在`main`函数最后，为`gl_Position`设定的值会被用作顶点着色器的输出，它是`vec4`类型的，而我们的输入是`vec3`，所以要进行一个转换。
+
+### 编译着色器
+
+我们将顶点着色器的源代码存储在文件顶部的一个C字符串常量中：
+
+```c
+const char *vertexShaderSource = "#version 330 core\n"
+	"layout (location = 0) in vec3 aPos;\n"
+	"void main()\n"
+	"{\n"
+	" gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+	"}\0";
+```
+
+OpenGL必须在运行时从源代码动态编译该着色器，我们首先需要使用`glCreateShader`创建一个着色器对象。
+
+```c
+unsigned int vertexShader;
+vertexShader = glCreateShader(GL_VERTEX_SHADER);
+```
+
+然后我们将着色器源代码附加到该着色器对象上，编译着色器。
+
+```c
+glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+glCompileShader(vertexShader);
+```
+
+> 检查着色器编译是否成功
+
+```c
+int success;
+char infoLog[512];
+glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+
+if(!success)
+{
+	glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" <<
+	infoLog << std::endl;
+}
+```
