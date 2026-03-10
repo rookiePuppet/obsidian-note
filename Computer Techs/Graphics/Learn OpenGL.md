@@ -390,3 +390,21 @@ OpenGL中的任何对象都一样，VBO拥有一个和缓冲区对应的唯一ID
 unsigned int VBO;
 glGenBuffers(1, &VBO);
 ```
+
+OpenGL有多种类型的缓冲区对象，顶点缓冲对象的类型是`GL_ARRAY_BUFFER`。OpenGL允许我们一次绑定多个缓冲区，只要他们的类型不同，使用glBindBuffer函数可以将刚刚创建的缓冲区绑定到`GL_ARRAY_BUFFER`。
+
+```cpp
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+```
+
+这样以后，针对`GL_ARRAY_BUFFER`的任何函数调用就会被用于配置当前绑定的缓冲区，即`VBO`。然后我们通过`glBufferData`函数将之前定义好的顶点数据复制到缓冲区内存，第一个参数是目标缓冲区类型，第二个参数是数据的字节大小，第三个参数就是实际要拷贝的数据，第四个参数指定显卡如何管理该数据，有三种形式：
+
+- `GL_STREAM_DRAW`：数据只设置一次，最多被使用几次
+- `GL_STATIC_DRAW`：数据只设置一次，被多次使用
+- `GL_DYNAMIC_DRAW`：数据频繁改变，被多次使用
+
+```cpp
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+```
+
+因为这里顶点的位置数据不会改变，会被频繁使用，并且每一次渲染调用都保持相同，所以最好使用`GL_STATIC_DRAW`。
