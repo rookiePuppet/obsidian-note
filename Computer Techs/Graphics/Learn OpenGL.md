@@ -582,3 +582,53 @@ someOpenGLFunctionThatDrawsOurTriangle();
 
 每次绘制一个物体，我们都必须重复这个过程。一旦顶点属性和物体数量多起来，正确地绑定缓冲对象并为每一个对象配置顶点属性很快变得枯燥。是否有某种方式可以将所有状态配置存储到一个对象，并简单地绑定该对象来恢复它的状态？
 
+#### 顶点数组对象
+
+顶点数组对象（VAO）可以像顶点缓冲对象一样绑定，之后所有的顶点属性调用都会存储在VAO中。每当我们绘制物体时，只需要绑定对应的VAO，就能在不同的顶点数据和属性配置之间切换。
+
+顶点数组对象存储以下内容：
+
+- 对`glEnableVertexAttribArray`和`glDisableVertexattribAray`的调用
+- 通过`glVertexAttribPointer`进行的顶点属性配置
+- 通过向`glVertexAttribPointer`调用与顶点属性关联的顶点缓冲对象
+
+![[Pasted image 20260310170824.png]]
+
+创建VAO的过程和VBO类似：
+
+```c
+unsigned int VAO;
+glGenVertexArrays(1, &VAO);
+```
+
+要使用VAO，只需通过`glBindVertexArray`绑定VAO即可，然后绑定/配置相应的VBO和属性指针，再解绑VAO。
+
+```c
+// ..:: Initialization code (done once (unless your object frequently changes)) :: ..
+// 1. bind Vertex Array Object
+glBindVertexArray(VAO);
+// 2. copy our vertices array in a buffer for OpenGL to use
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+// 3. then set our vertex attributes pointers
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+(void*)0);
+glEnableVertexAttribArray(0);
+// ..:: Drawing code (in render loop) :: ..
+// 4. draw the object
+glUseProgram(shaderProgram);
+glBindVertexArray(VAO);
+someOpenGLFunctionThatDrawsOurTriangle();
+```
+
+#### 等待已久的三角形
+
+为了绘制我们想要的物体，OpenGL提供了`glDrawArrays`函数，可以使用当前激活的着色器以及先前定义的顶点属性配置和顶点数据绘制图元。
+
+```c
+glUseProgram(shaderProgram);
+glBindVertexArray(VAO);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+```
+
+`glDrawArray`函数的第一个参数为我们希望绘制的OpenGL图元类型，第二个参数指定顶点数组的起始索引，第三个参数指定绘制的顶点数量。
