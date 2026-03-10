@@ -442,7 +442,7 @@ const char *vertexShaderSource = "#version 330 core\n"
 	"}\0";
 ```
 
-OpenGL必须在运行时从源代码动态编译该着色器，我们首先需要使用`glCreateShader`创建一个着色器对象。
+OpenGL必须在运行时从源代码动态编译该着色器，我们首先需要使用`glCreateShader`创建一个着色器对象，传入`GL_VERTEX_SHADER`指定着色器类型。
 
 ```c
 unsigned int vertexShader;
@@ -470,3 +470,94 @@ if(!success)
 	infoLog << std::endl;
 }
 ```
+
+### 片元着色器
+
+片元着色器只需要一个vec4输出变量用于定义最终的颜色输出，我们可以用`out`关键字声明输出值。
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+void main()
+{
+	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+}
+```
+
+编译片元着色器的过程和顶点着色器是类似的，不过这次我们使用`GL_FRAGMENT_SHADER`作为着色器类型。
+
+最后我们要将两个着色器对象链接到一个着色器程序。
+
+### 着色器程序
+
+着色器程序对象表示的是多个着色器组合并链接形成的程序，为了使用刚刚编译好的着色器，我们必须将它们**链接**到一个着色器程序对象，然后在渲染物体时激活这个着色器程序。
+
+链接着色器其实就是将每一个着色器的输出链接到其下一个着色器的输入，如果输入输出不匹配就会发生链接错误。
+
+首先创建一个着色器程序对象：
+
+```c
+unsigned int shaderProgram;
+shaderProgram = glCreateProgram();
+```
+
+然后将编译好的着色器附加到程序对象上，再使用`glLinkProgram`函数链接它们：
+
+```c
+glAttachShader(shaderProgram, vertexShader);
+glAttachShader(shaderProgram, fragmentShader);
+glLinkProgram(shaderProgram);
+```
+
+> 检查着色器程序链接是否成功
+
+```c
+glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+if(!success) {
+	glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+	...
+}
+```
+
+之后通过调用`glUseProgram`函数，将程序对象激活。
+
+```c
+glUseProgram(shaderProgram);
+```
+
+着色器链接完成后，别忘记将着色器对象删除。
+
+```c
+glDeleteShader(vertexShader);
+glDeleteShader(fragmentShader);
+```
+
+### 链接顶点属性
+
+顶点着色器允许我们以顶点属性的形式指定需要的输入，这意味着我们必须手动指定输入数据和顶点属性的对应关系。
+
+我们的顶点缓冲数据格式如下：
+
+![[Pasted image 20260310154429.png]]
+
+- 位置数据以32位浮点值存储
+- 每一个位置由3个这样的值组成
+- 数值紧密排列在数组中
+- 数据中第一个值位于缓冲区的开头
+
+知道了这些，我们就可以使用`glVertexAttribPointer`告诉OpenGL如何理解顶点数据。
+
+```c
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+```
+
+`glVertexAttribPointer`函数的各个参数：
+
+- 指定要配置的顶点属性，我们在顶点着色器中通过`layout(location = 0)`指定了顶点属性`position`的位置，因此这里是0。
+- 指定顶点属性的大小，vec3由3个值组成。
+- 指定数据类型为`GL_FLOAT`，因为`vec*`由浮点值组成。
+- 指定是否对数据标准化。
+- 指定顶点属性之间的间隔，因为这里每一个位置数据占据3个浮点数大小，也就是说从一个位置数据的开始到下一个位置数据的开始之间间隔3个浮点数。另外，由于我们已知数组是紧密排列的，也可以指定为0，让OpenGL去决定间隔。
+- 位置数据在缓冲区的起始偏移
