@@ -561,3 +561,24 @@ glEnableVertexAttribArray(0);
 - 指定是否对数据标准化。
 - 指定顶点属性之间的间隔，因为这里每一个位置数据占据3个浮点数大小，也就是说从一个位置数据的开始到下一个位置数据的开始之间间隔3个浮点数。另外，由于我们已知数组是紧密排列的，也可以指定为0，让OpenGL去决定间隔。
 - 位置数据在缓冲区的起始偏移
+
+顶点属性默认是关闭的，我们需要使用`glEnableVertexAttribArray`将它启用。
+
+到此为止，我们已经准备好所有东西了：使用顶点缓冲对象初始化缓冲区中的顶点数据，准备顶点和片元着色器并告诉OpenGL如何链接顶点数据和顶点属性。在OpenGL中绘制物体就像这样：
+
+```c
+// 0. copy our vertices array in a buffer for OpenGL to use
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+// 1. then set the vertex attributes pointers
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+(void*)0);
+glEnableVertexAttribArray(0);
+// 2. use our shader program when we want to render an object
+glUseProgram(shaderProgram);
+// 3. now draw the object
+someOpenGLFunctionThatDrawsOurTriangle();
+```
+
+每次绘制一个物体，我们都必须重复这个过程。一旦顶点属性和物体数量多起来，正确地绑定缓冲对象并为每一个对象配置顶点属性很快变得枯燥。是否有某种方式可以将所有状态配置存储到一个对象，并简单地绑定该对象来恢复它的状态？
+
