@@ -719,3 +719,73 @@ glBindVertexArray(0);
 
 > [!note] 线框模式
 > 要以线框模式绘制三角形，可以通过`glPolygonmode(GL_FRONT_AND_BACK, GL_LINE)`配置OpenGL如何绘制图元。第一个参数表示我们想将其应用于所有三角形的正面和背面，第二个参数表示绘制成线段。所有之后的绘制调用都会在线框模式下进行，直到我们通过`glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)`设置回默认。
+
+## 着色器
+
+着色器是运行在GPU上的程序，在图形管线的特定部分工作。简单来说，着色器只不过是将输入进行变换从而产生输出的程序，它们之间不能相互通信。
+
+### GLSL
+
+OpenGL中的着色器使用类似C语言的GLSL编写，GLSL是为图形专门设计的，包含向量和矩阵操作等有用的特性。
+
+编写着色器从版本声明开始，然后是一系列的输入输出变量、uniform和`main`函数。每个着色器的入口点就是它的`main`函数，在这里面我们对输入变量进行处理，然后输出结果到它的输出变量中。
+
+```c
+#version version_number
+in type in_variable_name;
+in type in_variable_name;
+
+out type out_variable_name;
+
+uniform type uniform_name;
+
+void main()
+{
+	// process input(s) and do some weird graphics stuff
+	...
+	// output processed stuff to output variable
+	out_variable_name = weird_stuff_we_processed;
+}
+```
+
+对于顶点着色器来说，输入变量也叫做**顶点属性**。可声明顶点属性的数量受限于硬件，OpenGL会保证至少可以使用16个4分量的顶点属性，一些硬件可能允许声明更多，这可以通过`GL_MAX_VERTEX_ATTRIBS`来查询。
+
+```c
+int nrAttributes;
+glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+std::cout << "Maximum nr of vertex attributes supported: " << nrAttributes
+<< std::endl;
+```
+
+### 类型
+
+GLSL提供的基础类型有int，float，double，uint和bool，另外还有两种容器类型是向量和矩阵。
+
+#### 向量
+
+在GLSL中，向量是一个包含最多四个分量的基本类型容器，可以有以下形式（n表示分量的数量）：
+
+- vecn：float类型
+- bvecn：bool类型
+- ivecn：int类型
+- uvecn：uint类型
+- dvecn：double类型
+
+向量的分量可以通过`vec.x/y/z/w`的形式进行访问，对于颜色可以使用`rgba`，对于纹理坐标可以使用`stpq`。
+
+向量类型支持`swizzling`，一种灵活的分量选择方式，语法像这样：
+
+```c
+vec2 someVec;
+vec4 differentVec = someVec.xyxx;
+vec3 anotherVec = differentVec.zyw;
+vec4 otherVec = someVec.xxxx + anotherVec.yxzy;
+```
+
+你可以使用最多4个字母的任意组合来创建一个新的向量，只要原向量拥有对应的分量。还可以利用它来实现更简便的向量构造函数调用：
+
+```c
+vec2 vect = vec2(0.5, 0.7);
+vec4 result = vec4(vect, 0.0, 0.0);
+vec4 otherResult = vec4(result.xyz, 1.0);
+```
