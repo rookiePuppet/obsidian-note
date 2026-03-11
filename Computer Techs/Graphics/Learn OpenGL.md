@@ -666,3 +666,56 @@ unsigned int indices[] = { // note that we start from 0!
 	1, 2, 3 // second triangle
 };
 ```
+
+声明顶点和索引之后，创建元素缓冲对象：
+
+```c
+unsigned int EBO;
+glGenBuffers(1, &EBO);
+```
+
+和VBO类似，我们会绑定EBO，然后使用`glBufferData`将索引拷贝到缓冲区。
+
+```c
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+GL_STATIC_DRAW);
+```
+
+最后，我们要将`glDrawArrays`调用替换为`glDrawElements`，以表明我们要从索引缓冲渲染三角形。第一个参数指定绘制模式，和`glDrawArrays`类似。第二个参数是绘制元素的数量，我们总共需要绘制6个顶点。第三个参数是索引的类型。最后一个参数指定EBO的起始偏移。
+
+```c
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+```
+
+`glDrawElements`函数从当前绑定到`GL_ELEMENT_ARRAY_BUFFER`的EBO中取出索引，这意味着每次我们想用索引绘制时都要绑定对应的VBO。当VAO绑定时，最后绑定的EBO会作为该VAO的元素缓冲对象，绑定到该VAO也会自动绑定到对应的VBO。
+
+![[Pasted image 20260311113504.png]]
+
+最终的初始化和绘制代码会变成这样：
+
+```c
+// ..:: Initialization code :: ..
+// 1. bind Vertex Array Object
+glBindVertexArray(VAO);
+// 2. copy our vertices array in a vertex buffer for OpenGL to use
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+// 3. copy our index array in a element buffer for OpenGL to use
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+GL_STATIC_DRAW);
+// 4. then set the vertex attributes pointers
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+[...]
+// ..:: Drawing code (in render loop) :: ..
+glUseProgram(shaderProgram);
+glBindVertexArray(VAO);
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)
+glBindVertexArray(0);
+```
+
+> [!note] 线框模式
+> 要以线框模式绘制三角形，可以通过`glPolygonmode(GL_FRONT_AND_BACK, GL_LINE)`配置OpenGL如何绘制图元。第一个参数表示我们想将其应用于所有三角形的正面和背面，第二个参数表示绘制成线段。所有之后的绘制调用都会在线框模式下进行，直到我们通过`glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)`设置回默认。
