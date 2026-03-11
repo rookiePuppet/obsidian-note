@@ -632,3 +632,37 @@ glDrawArrays(GL_TRIANGLES, 0, 3);
 ```
 
 `glDrawArray`函数的第一个参数为我们希望绘制的OpenGL图元类型，第二个参数指定顶点数组的起始索引，第三个参数指定绘制的顶点数量。
+
+### 元素缓冲对象
+
+假设要绘制一个矩形，可以通过绘制两个三角形得到，顶点数据会是这样的：
+
+```c
+float vertices[] = {
+	// first triangle
+	0.5f, 0.5f, 0.0f, // top right
+	0.5f, -0.5f, 0.0f, // bottom right
+	-0.5f, 0.5f, 0.0f, // top left
+	// second triangle
+	0.5f, -0.5f, 0.0f, // bottom right
+	-0.5f, -0.5f, 0.0f, // bottom left
+	-0.5f, 0.5f, 0.0f // top left
+};
+```
+
+可以看到有一些重复的顶点，有没有办法只存储唯一的顶点，然后指定顶点绘制的顺序呢？这样我们就只需要存储四个顶点来绘制矩形。
+
+元素缓冲对象就可以解决这个问题，它可以存储OpenGL用来决定要绘制的顶点索引，这被称为**索引绘制**。
+
+```c
+float vertices[] = {
+	0.5f, 0.5f, 0.0f, // top right
+	0.5f, -0.5f, 0.0f, // bottom right
+	-0.5f, -0.5f, 0.0f, // bottom left
+	-0.5f, 0.5f, 0.0f // top left
+};
+unsigned int indices[] = { // note that we start from 0!
+	0, 1, 3, // first triangle
+	1, 2, 3 // second triangle
+};
+```
