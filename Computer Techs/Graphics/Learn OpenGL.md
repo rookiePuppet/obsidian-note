@@ -1029,3 +1029,71 @@ void setFloat(const std::string &name, float value) const
 	glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
 }
 ```
+
+## 纹理
+
+纹理是一种二维图像，用于给物体添加细节，也可以存储任何用于发送给着色器的数据。
+
+为了将纹理映射到三角形上，我们需要告诉三角形的每一个顶点，它们各自对应纹理的哪一部分。每个顶点都有一个对应的**纹理坐标**，用于采样纹理图像。
+
+纹理坐标的x和y轴范围从0到1，左下角为(0,0)，右上角坐标为(1,1)，使用纹理坐标取出纹理颜色的过程叫做**采样**。
+
+### 纹理环绕
+
+当纹理坐标超出范围时，OpenGL默认会对纹理进行重复（忽略坐标的整数部分），其他选项包括：
+
+- `GL_REPEAT`：重复纹理图像，默认行为
+- `GL_MIRRORED_REPEAT`：每次重复会镜面翻转
+- `GL_CLAMP_TO_EDGE`：将坐标收缩在0到1之间
+- `GL_CLAMP_TO_BORDER`：超出范围的部分变成指定的边框颜色
+
+可以使用`glTexParameteri`函数对每个坐标轴分别设置纹理环绕模式。
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+```
+
+如果选择`GL_CLAMP_TO_BORDER`模式，还需要额外指定边框颜色。
+
+```c
+float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+```
+
+### 纹理过滤
+
+纹理坐标是与分辨率无关的任意浮点值，所以OpenGL必须清楚哪一个纹理像素（也叫做**纹素**）应该映射到一个纹理坐标，这就是**纹理过滤**。现在我们只讨论最重要的两种选项：`GL_NEAREST`和`GL_LINEAR`。
+
+`GL_NEAREST`（也叫做**最近邻过滤**或**点过滤**）是OpenGL纹理过滤的默认方式，OpenGL会选择中心最接近纹理坐标的纹素。
+
+`GL_LINEAR`（也叫做**线性过滤**）会从纹理坐标的邻近纹素中计算插值，得到一个近似颜色。纹素中心越靠近纹理坐标，对采样颜色的贡献就越大。
+
+纹理过滤可以设置放大和缩小操作，所以可以在纹理缩小时使用最近邻过滤，在纹理放大时使用线性过滤。
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
+
+#### 多级纹理
+
+由于离摄像机很远的物体可能只产生几个片元，OpenGL很难从高分辨率的纹理中取出正确的颜色。在小物体上使用高分辨率问题不仅会浪费内存带宽，还会造成伪影。
+
+为了解决这个问题，OpenGL使用了一种叫做`多级纹理`的概念，简单来说，它是一个纹理图像的集合，每一个纹理的大小是前一个的一半。
+
+当观察者距离物体超出一个特定阈值后，OpenGL就会使用一个最适合该物体当前距离的纹理。由于物体非常远，用户不会注意到分辨率降低。这样OpenGL就能采样到正确的纹素，并且在采样时需要的缓存更少。
+
+在创建纹理之后，通过`glGenerateMipmaps`函数，OpenGL就能帮我们自动创建出多级纹理。
+
+在不同的多级纹理之间切换时，可能会出现一些像尖锐边缘的伪影。和普通纹理过滤一样，我们可以在切换多级纹理时使用纹理过滤，有以下四种选项：
+
+- `GL_NEAREST_MIPMAP_NEAREST`: 选取最近的多级纹理匹配像素尺寸，使用最近邻插值进行纹理采样
+- `GL_LINEAR_MIPMAP_NEAREST`: 选取最近的多级纹理级别，使用线性插值
+- `GL_NEAREST_MIPMAP_LINEAR`: 在最匹配像素尺寸的两个多级纹理之间线性插值，通过最近邻插值采样插值级别
+- `GL_LINEAR_MIPMAP_LINEAR`: 在两个最接近的多级纹理之间线性插值，通过线性插值采样插值级别
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
