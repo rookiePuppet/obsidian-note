@@ -851,3 +851,47 @@ float vertices[] = {
 	0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f // top
 };
 ```
+
+相应地，我们需要在顶点着色器中添加颜色属性。
+
+```c
+#version 330 core
+layout (location = 0) in vec3 aPos; // position has attribute position 0
+layout (location = 1) in vec3 aColor; // color has attribute position 1
+
+out vec3 ourColor; // output a color to the fragment shader
+
+void main()
+{
+	gl_Position = vec4(aPos, 1.0);
+	ourColor = aColor; // set ourColor to input color from the vertex data
+}
+```
+
+直接使用`outColor`变量作为片元着色器的输出。
+
+```c
+#version 330 core
+out vec4 FragColor;
+in vec3 ourColor;
+
+void main()
+{
+	FragColor = vec4(ourColor, 1.0);
+}
+```
+
+现在VBO内存布局变成如下这样，我们还需要重新配置顶点属性指针。
+
+![[Pasted image 20260313111609.png]]
+
+```c
+// position attribute
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+// color attribute
+glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
+glEnableVertexAttribArray(1);
+```
+
+我们只提供了3个颜色，但输出的图像是一个巨大的调色盘。这其实是片元着色器当中的**片元插值**导致的，当渲染三角形时，光栅化阶段通常会输出比一开始指定的顶点更多的片元，光栅化器会根据片元在三角形形状上的位置来决定它们的坐标，进而根据这些坐标对片元着色器的输入变量进行**插值**。
