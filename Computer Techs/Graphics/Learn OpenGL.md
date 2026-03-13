@@ -895,3 +895,137 @@ glEnableVertexAttribArray(1);
 ```
 
 我们只提供了3个颜色，但输出的图像是一个巨大的调色盘。这其实是片元着色器当中的**片元插值**导致的，当渲染三角形时，光栅化阶段通常会输出比一开始指定的顶点更多的片元，光栅化器会根据片元在三角形形状上的位置来决定它们的坐标，进而根据这些坐标对片元着色器的输入变量进行**插值**。
+
+### 我们自己的着色器类
+
+```c
+#ifndef SHADER_H
+#define SHADER_H
+#include <glad/glad.h> // include glad to get the required OpenGL headers
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
+class Shader
+{
+public:
+	// the program ID
+	unsigned int ID;
+	// constructor reads and builds the shader
+	Shader(const char* vertexPath, const char* fragmentPath);
+	// use/activate the shader
+	void use();
+	// utility uniform functions
+	void setBool(const std::string& name, bool value) const;
+	void setInt(const std::string& name, int value) const;
+	void setFloat(const std::string& name, float value) const;
+};
+#endif
+```
+
+该着色器类持有着色器程序的ID，由于我们希望将顶点和片元着色器源代码以普通文本文件的形式存储在硬盘上，所以其构造函数需要传入着色器源代码的文件路径。此外还添加了一些功能函数方便我们的使用，`use`函数负责激活着色器程序，`set`函数用于查询uniform位置并设置值。
+
+### 读取文件
+
+在构造函数中，我们使用C++的filestream读取着色器源代码文件，然后编译和链接着色器，并检查编译和链接是否成功。
+
+```c
+Shader(const char* vertexPath, const char* fragmentPath)
+{
+	// 1. retrieve the vertex/fragment source code from filePath
+	std::string vertexCode;
+	std::string fragmentCode;
+	std::ifstream vShaderFile;
+	std::ifstream fShaderFile;
+	// ensure ifstream objects can throw exceptions:
+	vShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
+	fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
+	try
+	{
+		// open files
+		vShaderFile.open(vertexPath);
+		fShaderFile.open(fragmentPath);
+		std::stringstream vShaderStream, fShaderStream;
+		// read file’s buffer contents into streams
+		vShaderStream << vShaderFile.rdbuf();
+		fShaderStream << fShaderFile.rdbuf();
+		// close file handlers
+		vShaderFile.close();
+		fShaderFile.close();
+		// convert stream into string
+		vertexCode = vShaderStream.str();
+		fragmentCode = fShaderStream.str();
+	}
+	catch(std::ifstream::failure e)
+	{
+		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+	}
+	const char* vShaderCode = vertexCode.c_str();
+	const char* fShaderCode = fragmentCode.c_str();
+	[...]
+	// 2. compile shaders
+	unsigned int vertex, fragment;
+	int success;
+	char infoLog[512];
+	// vertex Shader
+	vertex = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex, 1, &vShaderCode, NULL);
+	glCompileShader(vertex);
+	// print compile errors if any
+	glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+	if(!success)
+	{
+		glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" <<
+		infoLog << std::endl;
+	};
+	// similiar for Fragment Shader
+	[...]
+	// shader Program
+	ID = glCreateProgram();
+	glAttachShader(ID, vertex);
+	glAttachShader(ID, fragment);
+	glLinkProgram(ID);
+	// print linking errors if any
+	glGetProgramiv(ID, GL_LINK_STATUS, &success);
+	if(!success)
+	{
+		glGetProgramInfoLog(ID, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" <<
+		infoLog << std::endl;
+	}
+	
+	// delete shaders; they’re linked into our program and no longer necessary
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+}
+```
+
+`use`函数：
+
+```c
+void use()
+{
+	glUseProgram(ID);
+}
+```
+
+uniform的`set`函数：
+
+```c
+void setBool(const std::string &name, bool value) const
+{
+	glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
+}
+
+void setInt(const std::string &name, int value) const
+{
+	glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+}
+
+void setFloat(const std::string &name, float value) const
+{
+	glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+}
+```
