@@ -799,3 +799,45 @@ vec4 otherResult = vec4(result.xyz, 1.0);
 由于片元着色器需要生成最终输出的颜色，所以它需要一个`vec4`颜色输出变量。如果在片元着色器中没有成功指定输出颜色，相应片元的颜色缓冲输出就会未定义。
 
 所以，如果我们想要从一个着色器发送数据给另一个着色器，我们就需要在对应着色器上定义输出和输入。当输出变量类型和名称和输入变量一致时，OpenGL会在链接着色器程序对象时将变量链接在一起。
+
+### Uniform
+
+**uniform**是另一种从CPU向GPU上的着色器传递数据的方式，和顶点属性有些不同。首先，uniform是全局的，意味着它在一个着色器程序对象中是唯一的，可以被着色器程序中任何阶段的着色器所访问。其次，无论你（在着色器中）如何设置uniform的值，它都会保持不变，直到其被重新赋值或更新。
+
+在GLSL中，我们使用`uniform`关键字在着色器中声明uniform变量。
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+uniform vec4 ourColor; // we set this variable in the OpenGL code.
+
+void main()
+{
+	FragColor = ourColor;
+}
+```
+
+> [!note]
+> 如果声明了没有在任何GLSL代码中使用过的uniform，编译器会自动将其移除。
+
+要修改uniform变量，首先需要使用`glGetUniformLocation`函数在着色器中找到它的索引/位置，再使用`glUniform*`函数设置它的值，在设置uniform值之前还需要使用着色器程序（调用`glUseProgram`）。
+
+```c
+float timeValue = glfwGetTime();
+float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+glUseProgram(shaderProgram);
+glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+```
+
+> [!note]
+> 由于OpenGL不支持函数重载，所以分别定义了不同参数类型的函数。例如这里的`glUniform`，要对特定类型的uniform调用该函数，需要通过一个对应的后缀来指定：
+> - f：float
+> - i：int
+> - ui：unsigned int
+> - 3f：3个float
+> - fv：float向量/数组
+
+
+
