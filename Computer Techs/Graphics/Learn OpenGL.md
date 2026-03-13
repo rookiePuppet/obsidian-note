@@ -1097,3 +1097,113 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 ```
+
+### 加载和创建纹理
+
+在使用纹理之前，我们必须将它们加载进来。纹理图像的格式有很多种，自己写加载方法是一件麻烦事，所以我们会使用一个图像加载库——stb_iamge.h。
+
+### stb_iamge.h
+
+[stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)支持加载大多数流行文件格式，容易集成到项目中，下载后只需要将stb_iamge.h文件添加到工程中，然后创建一个C++文件：
+
+```c
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+```
+
+通过定义`STB_IMAGE_IMPLEMENTATION`，让预处理器修改头文件，使其只包含相关的定义源代码，以便捷地将头文件变成`.cpp`文件。
+
+使用`stbi_load`函数加载图像：
+
+```c
+int width, height, nrChannels;
+unsigned char *data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);
+```
+
+### 创建纹理
+
+和其他OpenGL对象一样，纹理也通过ID引用。
+
+```c
+unsigned int texture;
+glGenTextures(1, &texture);
+```
+
+绑定纹理：
+
+```c
+glBindTexture(GL_TEXTURE_2D, texture);
+```
+
+使用`glTexImage2D`函数创建纹理并生成多级纹理：
+
+```c
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+glGenerateMipmap(GL_TEXTURE_2D);
+```
+
+最后释放图像内存：
+
+```c
+stbi_image_free(data);
+```
+
+### 使用纹理
+
+我们要将纹理绘制在一个矩形上，首先在顶点数据中添加纹理坐标：
+
+```c
+float vertices[] = {
+	// positions      // colors         // texture coords
+	0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
+	0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
+	-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+	-0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f // top left
+};
+```
+
+配置顶点属性：
+
+```c
+glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+glEnableVertexAttribArray(2);
+```
+
+在顶点着色器中接收纹理坐标并传递给片元着色器：
+
+```c
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aColor;
+layout (location = 2) in vec2 aTexCoord;
+
+out vec3 ourColor;
+out vec2 TexCoord;
+
+void main()
+{
+	gl_Position = vec4(aPos, 1.0);
+	ourColor = aColor;
+	TexCoord = aTexCoord;
+}
+```
+
+在片元着色器中，使用GLSL提供的纹理对象类型`sampler`来访问纹理，通过声明一个`uniform sampler2D`就可以添加一张纹理，并使用GLSL内置的`texture`函数对纹理进行采样。
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+in vec3 ourColor;
+in vec2 TexCoord;
+
+uniform sampler2D ourTexture;
+
+void main()
+{
+	FragColor = texture(ourTexture, TexCoord);
+}
+```
+
+最后，在调用`glDrawElements`之前绑定纹理，纹理将自动赋值给片元着色器的sampler。
+
