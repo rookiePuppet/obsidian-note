@@ -839,5 +839,15 @@ glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 > - 3f：3个float
 > - fv：float向量/数组
 
+### 更多属性
 
+现在我们向顶点数据中添加颜色数据，分别指定三角形的三个顶点的颜色为红、绿、蓝。
 
+```c
+float vertices[] = {
+	// positions       // colors
+	0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom right
+	-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
+	0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f // top
+};
+```
