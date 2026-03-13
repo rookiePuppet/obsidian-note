@@ -1207,3 +1207,8 @@ void main()
 
 最后，在调用`glDrawElements`之前绑定纹理，纹理将自动赋值给片元着色器的sampler。
 
+```c
+glBindTexture(GL_TEXTURE_2D, texture);
+glBindVertexArray(VAO);
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+```
