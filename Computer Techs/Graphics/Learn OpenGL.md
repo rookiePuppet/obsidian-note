@@ -1294,3 +1294,16 @@ GLM即OpenGL Mathematics，是一个只包含头文件的库。
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 ```
+
+如何在着色器中使用变换矩阵呢？我们可以声明一个`mat4`类型的uniform变量：
+
+```c
+uniform mat4 transform;
+```
+
+然后将变换矩阵发送给着色器：
+
+```c
+unsigned int transformLoc = glGetUniformLocation(ourShader.ID,"transform");
+glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+```
