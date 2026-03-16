@@ -1212,3 +1212,18 @@ glBindTexture(GL_TEXTURE_2D, texture);
 glBindVertexArray(VAO);
 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 ```
+
+### 纹理单元
+
+`glUniformli`可以为纹理采样器指定一个位置，让我们可以在一个片元着色器中一次使用多个纹理。纹理所在的位置称为一个**纹理单元**，默认为0。
+
+因为默认激活的纹理单元为0，所以在绑定多张纹理时，要先使用`glActiveTexture`激活对应的纹理单元。
+
+```c
+glActiveTexture(GL_TEXTURE0); // activate texture unit first
+glBindTexture(GL_TEXTURE_2D, texture);
+```
+
+> [!note]
+> OpenGL至少可以使用16个纹理单元，从`GL_TEXTURE0`到`GL_TEXTURE15`。在访问`GL_TEXTURE8`时也可以使用`GL_TEXURE0+8`，这在循环纹理单元时非常有用。
+
