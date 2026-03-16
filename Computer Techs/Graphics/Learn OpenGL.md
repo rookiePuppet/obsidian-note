@@ -1227,3 +1227,56 @@ glBindTexture(GL_TEXTURE_2D, texture);
 > [!note]
 > OpenGL至少可以使用16个纹理单元，从`GL_TEXTURE0`到`GL_TEXTURE15`。在访问`GL_TEXTURE8`时也可以使用`GL_TEXURE0+8`，这在循环纹理单元时非常有用。
 
+在片元着色器中添加另一个纹理采样器：
+
+```c
+#version 330 core
+
+uniform sampler2D texture1;
+uniform sampler2D texture2;
+
+void main()
+{
+	FragColor = mix(texture(texture1, TexCoord),
+	texture(texture2, TexCoord), 0.2);
+}
+```
+
+然后加载第二张纹理：
+
+```c
+unsigned char *data = stbi_load("awesomeface.png", &width, &height, &nrChannels, 0);
+
+if (data)
+{
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA,
+	GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+}
+```
+
+由于这次是`.png`格式的图片，我们需要使用`GL_RGBA`说明图片数据中包含透明度通道。
+
+```c
+glActiveTexture(GL_TEXTURE0);
+glBindTexture(GL_TEXTURE_2D, texture1);
+glActiveTexture(GL_TEXTURE1);
+glBindTexture(GL_TEXTURE_2D, texture2);
+
+glBindVertexArray(VAO);
+```
+
+我们还需要告诉OpenGL纹理单元和每一个着色器中的采样器的对应关系。
+
+```c
+// before enter the render loop:
+shader.use(); // don’t forget to activate the shader first!
+glUniform1i(glGetUniformLocation(shader.ID, "texture1"), 0); // manually
+shader.setInt("texture2", 1); // or with shader class
+```
+
+由于图像原点位于左上角，而OpenGL的原点位于左下角，还需要在加载图像时对y轴进行翻转。
+
+```c
+stbi_set_flip_vertically_on_load(true);
+```
