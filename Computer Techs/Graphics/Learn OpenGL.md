@@ -1280,3 +1280,17 @@ shader.setInt("texture2", 1); // or with shader class
 ```c
 stbi_set_flip_vertically_on_load(true);
 ```
+
+## 变换
+
+### GLM
+
+GLM即OpenGL Mathematics，是一个只包含头文件的库。
+
+大多数GLM功能都可以在以下3个头文件中找到：
+
+```c
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+```
