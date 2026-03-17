@@ -1381,3 +1381,46 @@ int modelLoc = glGetUniformLocation(ourShader.ID, "model");
 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 ... // same for View Matrix and Projection Matrix
 ```
+
+---
+
+下面我们将二维平面扩展为三维的立方体。
+
+要渲染一个立方体，我们总共需要36个顶点（6个面，每个面两个三角形三个顶点）。
+
+```c
+float vertices[] = {
+-0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
+0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
+0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
+...
+}
+```
+
+让立方体随时间旋转：
+
+```c
+model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+```
+
+使用`glDrawArrays`绘制立方体。
+
+```c
+glDrawArrays(GL_TRIANGLES, 0, 36);
+```
+
+这时会发现立方体的绘制并不完整，这是因为OpenGL是逐三角形逐片元进行绘制的，它会覆盖已经绘制过的像素。由于OpenGL不能保证三角形渲染的顺序，一些三角形的会相互重叠绘制。
+
+幸运的是，OpenGL会将深度信息存储在一个叫做**z缓冲区**（深度缓冲）的地方，它可以让OpenGL决定何时在某个像素上绘制以及何时不进行绘制。我们可以使用z缓冲配置OpenGL，进行深度测试。
+
+GLFW会自动为我们创建深度缓冲区，每个片元都会将深度值存储为它的z值，当片元将要输出颜色时，OpenGL会将它的深度值和深度缓冲进行比较，以决定是否丢弃已有的片元，这个过程就是**深度测试**。
+
+因为OpenGL默认是将深度测试关闭的，我们需要使用`glEnable(GL_DEPTH_TEST)`开启深度测试。在每一次渲染循环中，我们还要清除深度缓冲区，这和颜色缓冲区是一个道理。
+
+```c
+glEnable(GL_DEPTH_TEST);
+
+// in render loop
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+```
