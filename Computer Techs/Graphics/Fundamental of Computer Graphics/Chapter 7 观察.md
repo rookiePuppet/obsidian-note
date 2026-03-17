@@ -253,7 +253,7 @@ $$
 
 $$
 P\left[\begin{matrix}x\\y\\z\\1\end{matrix}\right]=
-\left[\begin{matrix}nx\\ny\\(n+f)z-fn\\z\end{matrix}\right]
+\left[\begin{matrix}nx\\ny\\(n+f)z-fn\\z\end{matrix}\right]=
 \left[\begin{matrix}\frac{nx}z\\\frac{ny}z\\(n+f)-\frac{fn}z\\1\end{matrix}\right]
 $$
 
