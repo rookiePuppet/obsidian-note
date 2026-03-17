@@ -1301,6 +1301,14 @@ GLM即OpenGL Mathematics，是一个只包含头文件的库。
 uniform mat4 transform;
 ```
 
+构建矩阵：
+
+```c
+glm::mat4 trans = glm::mat4(1.0f);
+trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+```
+
 然后将变换矩阵发送给着色器：
 
 ```c
