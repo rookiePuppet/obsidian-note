@@ -1315,3 +1315,22 @@ trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
 unsigned int transformLoc = glGetUniformLocation(ourShader.ID,"transform");
 glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 ```
+
+## 坐标系统
+
+OpenGL希望在执行完顶点着色器之后，所有的顶点都在标准设备坐标下。
+
+将顶点坐标转换到标准设备坐标是一个分步进行的过程，因为其中的一些操作在特定的坐标系统下会更简单，所以我们会使用一些中间坐标系统，对我们来说最重要的是以下5个：
+
+- 本地空间（模型空间）
+- 世界空间
+- 视图空间
+- 裁剪空间
+- 屏幕空间
+
+在各个坐标空间之间转换需要用到一些变换矩阵，最关键的是模型、视图和投影矩阵。顶点坐标首先以**本地坐标**位于**本地空间**，然后依次变换为**世界坐标**、**视图坐标**、**裁剪坐标**，最终结束于**屏幕坐标**。
+
+下图展示了整个过程和相应的变换矩阵。
+
+![[Pasted image 20260317103004.png]]
+
