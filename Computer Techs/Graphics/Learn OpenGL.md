@@ -1451,3 +1451,7 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 
 摄像机方向是摄像机指向的方向，用摄像机位置减去场景的原点即可得到。
 
+```c
+glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+```
