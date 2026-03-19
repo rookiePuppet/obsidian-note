@@ -1557,3 +1557,71 @@ float currentFrame = glfwGetTime();
 deltaTime = currentFrame - lastFrame;
 lastFrame = currentFrame;
 ```
+
+### 鼠标输入
+
+首先设置GLFW隐藏并捕获指针，捕获指针意味着一旦应用得到焦点，鼠标指针就会保持在窗口中心。
+
+```c
+glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+```
+
+要计算pitch和yaw值，我们需要通过GLFW监听鼠标移动事件，创建一个如下原型的回调函数：
+
+```c
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+```
+
+`xpos`和`ypos`表示当前鼠标位置，只要注册了回调函数，每次鼠标移动时都会调用`mouse_callback`函数。
+
+```c
+glfwSetCursorPosCallback(window, mouse_callback);
+```
+
+在处理鼠标输入计算摄像机方向向量的过程需要如下步骤：
+
+1. 计算从上一帧之后的鼠标偏移
+2. 将偏移添加到摄像机的yaw和pitch值
+3. 限制pitch值的最小和最大值
+4. 计算方向向量
+
+```c
+// 1.计算鼠标偏移
+float lastX = 400, lastY = 300;
+
+float xoffset = xpos - lastX;
+float yoffset = lastY - ypos; // reversed: y ranges bottom to top
+lastX = xpos;
+lastY = ypos;
+const float sensitivity = 0.1f;
+xoffset *= sensitivity;
+yoffset *= sensitivity;
+
+// 2.应用偏移
+yaw += xoffset;
+pitch += yoffset;
+
+// 3.限制pitch角度
+if(pitch > 89.0f)
+	pitch = 89.0f;
+if(pitch < -89.0f)
+	pitch = -89.0f;
+
+// 4.计算方向向量
+glm::vec3 direction;
+direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+direction.y = sin(glm::radians(pitch));
+direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+cameraFront = glm::normalize(direction);
+```
+
+现在，当窗口第一次接收到鼠标焦点时，会出现一次突然的跳动。我们可以定义一个全局的bool变量来检查是否为第一次接收鼠标输入，如果是第一次，就更新初始的鼠标位置。
+
+```c
+if (firstMouse) // initially set to true
+{
+	lastX = xpos;
+	lastY = ypos;
+	firstMouse = false;
+}
+```
