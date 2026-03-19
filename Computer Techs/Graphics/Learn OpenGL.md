@@ -1536,3 +1536,24 @@ void processInput(GLFWwindow *window)
 		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 ```
+
+### 移动速度
+
+目前我们使用一个常量作为移动速度，由于每个人的电脑配置不一样，有的人每秒渲染的帧数可能更多，这会导致有些人移动得更快，而有些人比较慢。
+
+图形应用和游戏通常会记录一个`deltatime`变量，用来保存上一帧的渲染时间。我们将这个变量乘以移动速度，就能确保每个人的体验是相同的。
+
+我们需要记录两个全局变量来计算`deltatime`：
+
+```c
+float deltaTime = 0.0f; // Time between current frame and last frame
+float lastFrame = 0.0f; // Time of last frame
+```
+
+每一帧计算新的`deltatime`：
+
+```c
+float currentFrame = glfwGetTime();
+deltaTime = currentFrame - lastFrame;
+lastFrame = currentFrame;
+```
