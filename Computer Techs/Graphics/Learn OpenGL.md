@@ -1455,3 +1455,50 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
 ```
+
+#### 右方向轴
+
+右方向向量用于表示摄像机空间的正x轴，我们可以先指定一个世界空间的上方向向量，然后用它和摄像机方向叉乘。
+
+```c
+glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+```
+
+#### 上方向轴
+
+上方向轴表示的是摄像机空间的正y轴，用右方向和摄像机方向叉乘即可得到。
+
+```c
+glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+```
+
+### Look At
+
+使用上面三个轴和一个平移向量，我们可以组合出一个LookAt矩阵。
+
+$$
+LookAt=
+\left [
+\begin{matrix}
+R_x & R_y & R_z & 0 \\
+U_x & U_y & U_z & 0 \\
+D_x & D_y & D_z & 0 \\
+0 & 0 & 0 & 1 \\
+\end{matrix}
+\right ]
+*
+\left [
+\begin{matrix}
+1 & 0 & 0 & -P_x \\
+0 & 1 & 0 & -P_y \\
+0 & 0 & 1 & -P_z \\
+0 & 0 & 0 & 1 \\
+\end{matrix}
+\right ]
+$$
+
+```c
+glm::mat4 view;
+view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+```
